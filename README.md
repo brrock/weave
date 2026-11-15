@@ -5,9 +5,21 @@ A clean-room node editor for React (n8n/React Flow-style), built on shadcn/ui an
 ## Install
 
 ```bash
-npx shadcn@latest add https://raw.githubusercontent.com/brrock/weave/main/public/r/weave.json       # the canvas library
-npx shadcn@latest add https://raw.githubusercontent.com/brrock/weave/main/public/r/weave-demo.json  # optional: the n8n-style workflow editor block
+npx shadcn@latest add https://raw.githubusercontent.com/brrock/weave/registry/stable/weave.json       # the canvas library
+npx shadcn@latest add https://raw.githubusercontent.com/brrock/weave/registry/stable/weave-demo.json  # optional: n8n-style workflow editor block
 ```
+
+### Channels
+
+Swap `stable` in the URL for the channel you want:
+
+| Channel | URL segment | Updated |
+| --- | --- | --- |
+| Stable | `stable` | each published GitHub release |
+| Nightly | `nightly` | every commit to `main` |
+| Pinned | a release tag, e.g. `v0.1.0` | never (frozen at that release) |
+
+A channel's items only depend on that same channel, so `weave-demo` from nightly pulls nightly `weave`. Each item's `meta` records the `version` and `commit` it was built from. Allow about 5 minutes after a publish for GitHub's raw-file cache to refresh.
 
 This installs `components/weave/*`, the `button`/`tooltip` components it needs, and the `weave-flow` CSS utility.
 
@@ -38,26 +50,21 @@ const flow = createFlow(
 
 `flow` is the whole API: `add`, `remove`, `connect`, `updateNode(Data)`, `select`, `fitView`, `zoomAt`, `subscribe`/`get` for persistence. Use `useStore(flow, selector)` outside the canvas and `useFlowState(selector)` inside nodes.
 
-## Develop
+## Theming
 
-```bash
-bun install
-bun dev                  # demo app at :5173
-bun test                 # store tests
-bun run registry:build   # writes public/r/*.json from registry.json
-bun run e2e              # browser tests against a running `bun dev` (URL=… to override)
+Weave uses your shadcn theme as-is. Surfaces, borders, focus rings, selection and the minimap all read `--background`, `--card`, `--border`, `--primary`, `--muted-foreground`, `--ring` and `--radius`, so light/dark mode and custom themes apply automatically. That includes themes scoped to a subtree, such as a `.theme-blue` wrapper.
+
+To restyle the canvas itself, set any of these variables on `:root`, on a theme class, or on one `<Weave className="…">`:
+
+| Variable | Styles | Default |
+| --- | --- | --- |
+| `--weave-dot` | background dot grid | `--muted-foreground` at 35% |
+| `--weave-edge` | resting connections (canvas and minimap) | `--muted-foreground` at 45% |
+| `--weave-edge-hover` | hovered connection | `--foreground` at 70% |
+| `--weave-edge-selected` | selected connection, in-progress connection line | `--primary` |
+| `--weave-edge-flow` | animated connections (`edge.animated`) | `--primary` |
+| `--weave-handle` | port outlines | `--muted-foreground` at 60% |
+
+```tsx
+<Weave className="[--weave-edge-flow:var(--color-emerald-500)]" … />
 ```
-
-The e2e suite needs Chromium: `bunx playwright install chromium`, or point `CHROME_PATH` at any Chrome binary. `e2e/edges.mjs` asserts the editor's tricky interactions: insert-into-edge spacing, no stacked placement, no stray text selection, multi-select narrowing, and minimap dragging.
-
-The registry is served straight from this repo's `public/r/` via raw.githubusercontent.com. After changing anything under `src/components/weave*`, run `bun run registry:build` and commit `public/r/`. If you host it elsewhere, update the `weave.json` URL in `weave-demo`'s `registryDependencies`.
-
-Keep `src/index.css`'s Weave block in sync with the `css` fields in `registry.json`: that's what `shadcn add` writes into consumers' CSS.
-
-## Performance notes
-
-- Pan and zoom write the transform straight to the DOM, so React never renders while you move the viewport.
-- Nodes and edges outside the viewport (plus a 240px margin) are unmounted. With 500 nodes at 100% zoom, about 35 are mounted.
-- Each node and edge subscribes only to its own slice of state, so dragging one node re-renders just that node and its edges.
-- The minimap draws to a canvas at most once per frame.
-- Measured in headless Chromium with all 512 nodes on screen: ~1.2ms of JS per drag event, ~1ms per pan event.

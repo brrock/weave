@@ -7,9 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "registry:build": "shadcn build -o public/r",
+    "registry:build": "node scripts/build-registry.mjs",
     "test": "bun test",
-    "e2e": "node e2e/edges.mjs && node e2e/run.mjs && node e2e/mobile.mjs"
+    "e2e": "node e2e/edges.mjs && node e2e/theme.mjs && node e2e/run.mjs && node e2e/mobile.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

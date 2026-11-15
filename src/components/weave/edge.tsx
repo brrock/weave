@@ -3,6 +3,7 @@ import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { ViewContext } from "./node"
+import { THEME } from "./theme"
 import { DEFAULT_SIZE, useFlow, useFlowState, type FlowEdge, type HandleBox, type Side, type Size, type XY } from "./store"
 
 const DIR: Record<Side, XY> = { left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, top: { x: 0, y: -1 }, bottom: { x: 0, y: 1 } }
@@ -68,12 +69,8 @@ export const EdgeView = memo(function EdgeView({ edge }: { edge: FlowEdge }) {
         <path
           d={d}
           fill="none"
-          className={cn(
-            "stroke-muted-foreground/45 transition-[stroke] [stroke-width:1.75]",
-            hover && "stroke-foreground/70",
-            edge.selected && "stroke-primary [stroke-width:2.5]",
-            edge.animated && "weave-flow stroke-emerald-500",
-          )}
+          style={{ stroke: edge.animated ? THEME.edgeFlow : edge.selected ? THEME.edgeSelected : hover ? THEME.edgeHover : THEME.edge }}
+          className={cn("transition-[stroke] [stroke-width:1.75]", edge.selected && "[stroke-width:2.5]", edge.animated && "weave-flow")}
         />
       </svg>
       {(hover || edge.selected) && (
@@ -113,7 +110,7 @@ export function ConnectionLine() {
   const { d } = bezier({ x: n.position.x + h.x, y: n.position.y + h.y }, h.side, b, bs)
   return (
     <svg className={SVG} width={1} height={1}>
-      <path d={d} fill="none" className={cn("stroke-primary [stroke-width:2]", !c.over && "[stroke-dasharray:6_5]")} />
+      <path d={d} fill="none" style={{ stroke: THEME.edgeSelected }} className={cn("[stroke-width:2]", !c.over && "[stroke-dasharray:6_5]")} />
     </svg>
   )
 }

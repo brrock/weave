@@ -91,7 +91,8 @@ export function WorkflowEditor() {
             e.preventDefault()
             setPalette({})
           }}
-          className="flex-1"
+          // Theme hook: runs light up green instead of the default --primary.
+          className="flex-1 [--weave-edge-flow:var(--color-emerald-500)]"
         >
           <Controls />
           <SelectionBar flow={flow} onEdit={setDetails} />

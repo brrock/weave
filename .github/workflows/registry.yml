@@ -1,0 +1,68 @@
+# Publishes the shadcn registry to the `registry` branch, one folder per channel:
+#   nightly/   every push to main
+#   stable/    every published (non-pre) release
+#   <tag>/     every release, frozen forever
+# Served at https://raw.githubusercontent.com/<owner>/<repo>/registry/<channel>/<item>.json
+name: Registry
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+# Serialise publishes so a release and a nightly never race on the registry branch.
+concurrency:
+  group: registry-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Typecheck and test
+        run: |
+          bunx tsc --noEmit -p .
+          bun test
+
+      - name: Build channels
+        env:
+          BASE: https://raw.githubusercontent.com/${{ github.repository }}/registry
+          TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = release ]; then
+            node scripts/build-registry.mjs "$BASE/$TAG" "out/$TAG" "$TAG"
+            [ "$PRERELEASE" = true ] || node scripts/build-registry.mjs "$BASE/stable" out/stable "$TAG"
+          else
+            node scripts/build-registry.mjs "$BASE/nightly" out/nightly "nightly"
+          fi
+
+      - name: Publish to registry branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth 1 origin registry; then
+            git worktree add site FETCH_HEAD
+            git -C site switch -c registry
+          else
+            git worktree add --orphan -b registry site
+          fi
+          for dir in out/*; do
+            rm -rf "site/$(basename "$dir")"
+            cp -r "$dir" "site/$(basename "$dir")"
+          done
+          cd site
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "Publish $(ls ../out | tr '\n' ' ')from ${GITHUB_SHA::7}"
+          git push origin registry

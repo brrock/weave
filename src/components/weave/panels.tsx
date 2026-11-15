@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { bezier, guess } from "./edge"
+import { THEME } from "./theme"
 import { DEFAULT_SIZE, drag, useFlow, useFlowState, type FlowNode } from "./store"
 
 const PANEL = "absolute z-30 rounded-xl border bg-card/85 shadow-sm backdrop-blur-md"
@@ -83,11 +84,12 @@ export function MiniMap({ className, width = 200, height = 140, nodeColor }: Min
       const k = Math.min((width - pad * 2) / Math.max(b.w, 1), (height - pad * 2) / Math.max(b.h, 1))
       const m = (map.current = { x0: b.x + b.w / 2 - width / 2 / k, y0: b.y + b.h / 2 - height / 2 / k, k })
 
+      // Let CSS resolve colours (var() fallbacks, color-mix, nested themes) into something canvas accepts.
       const css = getComputedStyle(canvas)
-      const raw = (c: string) => (c.startsWith("--") ? css.getPropertyValue(c).trim() : c)
-      const muted = raw("--muted-foreground")
-      // An unset variable would resolve to "" and canvas would silently keep the previous fill.
-      const resolve = (c: string) => raw(c) || muted
+      const resolve = (c: string) => {
+        canvas.style.color = c.startsWith("--") ? `var(${c}, var(--muted-foreground))` : c
+        return css.color
+      }
       const primary = resolve("--primary")
       ctx.setTransform(dpr * k, 0, 0, dpr * k, -m.x0 * dpr * k, -m.y0 * dpr * k)
       ctx.clearRect(m.x0, m.y0, width / k, height / k)
@@ -104,8 +106,7 @@ export function MiniMap({ className, width = 200, height = 140, nodeColor }: Min
         ctx.moveTo(p.x, p.y)
         ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, q.x, q.y)
       }
-      ctx.globalAlpha = 0.45
-      ctx.strokeStyle = muted
+      ctx.strokeStyle = resolve(THEME.edge)
       ctx.lineWidth = 1.25 / k
       ctx.stroke()
 

@@ -100,7 +100,7 @@ export function Handle({ id, type, side = type === "source" ? "right" : "left", 
       data-state={state}
       {...rest}
       className={cn(
-        "group/handle absolute z-10 size-3 -translate-1/2 cursor-crosshair rounded-full border-2 border-muted-foreground/60 bg-background transition-[background-color,border-color,box-shadow]",
+        "group/handle absolute z-10 size-3 -translate-1/2 cursor-crosshair rounded-full border-2 border-[color:var(--weave-handle,color-mix(in_oklch,var(--muted-foreground)_60%,transparent))] bg-background transition-[background-color,border-color,box-shadow]",
         "before:absolute before:-inset-2 before:content-[''] pointer-coarse:before:-inset-4 hover:border-primary hover:bg-primary",
         "data-[state=valid]:border-primary data-[state=over]:border-primary data-[state=over]:bg-primary data-[state=over]:ring-4 data-[state=over]:ring-primary/25",
         PLACE[side],

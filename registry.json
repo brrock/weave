@@ -16,7 +16,8 @@
         { "path": "src/components/weave/node.tsx", "type": "registry:component", "target": "components/weave/node.tsx" },
         { "path": "src/components/weave/edge.tsx", "type": "registry:component", "target": "components/weave/edge.tsx" },
         { "path": "src/components/weave/panels.tsx", "type": "registry:component", "target": "components/weave/panels.tsx" },
-        { "path": "src/components/weave/canvas.tsx", "type": "registry:component", "target": "components/weave/canvas.tsx" }
+        { "path": "src/components/weave/canvas.tsx", "type": "registry:component", "target": "components/weave/canvas.tsx" },
+        { "path": "src/components/weave/theme.ts", "type": "registry:component", "target": "components/weave/theme.ts" }
       ],
       "css": {
         "@keyframes weave-dash": { "to": { "stroke-dashoffset": "-22" } },
@@ -33,7 +34,7 @@
       "title": "Weave workflow editor",
       "description": "An n8n-style workflow editor built on Weave: node palette, run simulation, details dialog, mobile selection bar.",
       "dependencies": ["lucide-react"],
-      "registryDependencies": ["https://raw.githubusercontent.com/brrock/weave/main/public/r/weave.json", "badge", "button", "command", "dialog", "input", "label", "separator", "switch"],
+      "registryDependencies": ["{{base}}/weave.json", "badge", "button", "command", "dialog", "input", "label", "separator", "switch"],
       "files": [
         { "path": "src/components/weave-demo/workflow-editor.tsx", "type": "registry:component", "target": "components/weave-demo/workflow-editor.tsx" },
         { "path": "src/components/weave-demo/nodes.tsx", "type": "registry:component", "target": "components/weave-demo/nodes.tsx" },

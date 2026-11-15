@@ -2,6 +2,7 @@ import { memo, useLayoutEffect, useMemo, useRef, type HTMLAttributes, type Keybo
 import { cn } from "@/lib/utils"
 import { ConnectionLine, EdgeView } from "./edge"
 import { NodeWrapper, ViewContext, type NodeTypes } from "./node"
+import { THEME } from "./theme"
 import { DEFAULT_SIZE, FlowContext, cancelDrag, drag, shallowArray, useFlow, useFlowState, type ConnectEnd, type Flow, type FlowEdge, type FlowState, type XY } from "./store"
 
 export interface WeaveProps extends Omit<HTMLAttributes<HTMLDivElement>, "onPointerDown"> {
@@ -117,7 +118,7 @@ export function Weave({ flow, nodeTypes, edgeToolbar, onConnectEnd, fitViewOnIni
           data-weave=""
           {...rest}
           className={cn(
-            "relative isolate cursor-grab touch-none overflow-hidden overscroll-none bg-background outline-none select-none [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] data-panning:cursor-grabbing",
+            "relative isolate cursor-grab touch-none overflow-hidden overscroll-none bg-background outline-none select-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] data-panning:cursor-grabbing",
             className,
           )}
           onPointerDownCapture={(e) => {
@@ -224,14 +225,14 @@ function Background() {
       () => (v) => {
         const gap = 20 * v.zoom
         const s = ref.current!.style
-        s.backgroundImage = gap < 7 ? "none" : "radial-gradient(circle, var(--dot) 1px, transparent 1.25px)"
+        s.backgroundImage = gap < 7 ? "none" : `radial-gradient(circle, ${THEME.dot} 1px, transparent 1.25px)`
         s.backgroundSize = `${gap}px ${gap}px`
         s.backgroundPosition = `${v.x - gap / 2}px ${v.y - gap / 2}px`
       },
       [],
     ),
   )
-  return <div ref={ref} className="pointer-events-none absolute inset-0 [--dot:color-mix(in_oklch,var(--muted-foreground)_35%,transparent)]" />
+  return <div ref={ref} className="pointer-events-none absolute inset-0" />
 }
 
 // ---- viewport culling: only nodes/edges near the screen are mounted ----

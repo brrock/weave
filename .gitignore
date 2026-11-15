@@ -25,3 +25,5 @@ dist-ssr
 
 # e2e screenshots
 e2e/shots
+public/r
+registry.build.json
