@@ -1,7 +1,7 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry.json",
   "name": "weave",
-  "homepage": "http://localhost:5199",
+  "homepage": "https://github.com/brrock/weave",
   "items": [
     {
       "name": "weave",
@@ -33,7 +33,7 @@
       "title": "Weave workflow editor",
       "description": "An n8n-style workflow editor built on Weave: node palette, run simulation, details dialog, mobile selection bar.",
       "dependencies": ["lucide-react"],
-      "registryDependencies": ["http://localhost:5199/r/weave.json", "badge", "button", "command", "dialog", "input", "label", "separator", "switch"],
+      "registryDependencies": ["https://raw.githubusercontent.com/brrock/weave/main/public/r/weave.json", "badge", "button", "command", "dialog", "input", "label", "separator", "switch"],
       "files": [
         { "path": "src/components/weave-demo/workflow-editor.tsx", "type": "registry:component", "target": "components/weave-demo/workflow-editor.tsx" },
         { "path": "src/components/weave-demo/nodes.tsx", "type": "registry:component", "target": "components/weave-demo/nodes.tsx" },

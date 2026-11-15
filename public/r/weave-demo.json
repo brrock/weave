@@ -7,7 +7,7 @@
     "lucide-react"
   ],
   "registryDependencies": [
-    "http://localhost:5199/r/weave.json",
+    "https://raw.githubusercontent.com/brrock/weave/main/public/r/weave.json",
     "badge",
     "button",
     "command",

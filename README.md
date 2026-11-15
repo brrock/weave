@@ -5,8 +5,8 @@ A clean-room node editor for React (n8n/React Flow-style), built on shadcn/ui an
 ## Install
 
 ```bash
-npx shadcn@latest add https://<your-host>/r/weave.json       # the canvas library
-npx shadcn@latest add https://<your-host>/r/weave-demo.json  # optional: the n8n-style workflow editor block
+npx shadcn@latest add https://raw.githubusercontent.com/brrock/weave/main/public/r/weave.json       # the canvas library
+npx shadcn@latest add https://raw.githubusercontent.com/brrock/weave/main/public/r/weave-demo.json  # optional: the n8n-style workflow editor block
 ```
 
 This installs `components/weave/*`, the `button`/`tooltip` components it needs, and the `weave-flow` CSS utility.
@@ -50,7 +50,7 @@ bun run e2e              # browser tests against a running `bun dev` (URL=… to
 
 The e2e suite needs Chromium: `bunx playwright install chromium`, or point `CHROME_PATH` at any Chrome binary. `e2e/edges.mjs` asserts the editor's tricky interactions: insert-into-edge spacing, no stacked placement, no stray text selection, multi-select narrowing, and minimap dragging.
 
-Before deploying, set `homepage` in `registry.json` and replace the `http://localhost:5199/r/weave.json` entry in `weave-demo`'s `registryDependencies` with your host. Then serve `public/r/` statically (any Vite deploy already does).
+The registry is served straight from this repo's `public/r/` via raw.githubusercontent.com. After changing anything under `src/components/weave*`, run `bun run registry:build` and commit `public/r/`. If you host it elsewhere, update the `weave.json` URL in `weave-demo`'s `registryDependencies`.
 
 Keep `src/index.css`'s Weave block in sync with the `css` fields in `registry.json`: that's what `shadcn add` writes into consumers' CSS.
 
