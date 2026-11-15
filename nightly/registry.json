@@ -1,0 +1,137 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "weave",
+  "homepage": "https://github.com/brrock/weave",
+  "items": [
+    {
+      "name": "weave",
+      "type": "registry:component",
+      "title": "Weave",
+      "description": "Node-based canvas for React: pan/zoom/pinch, draggable nodes, ports, bezier edges, box select, viewport culling, minimap and controls.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "button",
+        "tooltip"
+      ],
+      "files": [
+        {
+          "path": "src/components/weave/index.ts",
+          "type": "registry:component",
+          "target": "components/weave/index.ts"
+        },
+        {
+          "path": "src/components/weave/store.ts",
+          "type": "registry:component",
+          "target": "components/weave/store.ts"
+        },
+        {
+          "path": "src/components/weave/node.tsx",
+          "type": "registry:component",
+          "target": "components/weave/node.tsx"
+        },
+        {
+          "path": "src/components/weave/edge.tsx",
+          "type": "registry:component",
+          "target": "components/weave/edge.tsx"
+        },
+        {
+          "path": "src/components/weave/panels.tsx",
+          "type": "registry:component",
+          "target": "components/weave/panels.tsx"
+        },
+        {
+          "path": "src/components/weave/canvas.tsx",
+          "type": "registry:component",
+          "target": "components/weave/canvas.tsx"
+        },
+        {
+          "path": "src/components/weave/theme.ts",
+          "type": "registry:component",
+          "target": "components/weave/theme.ts"
+        }
+      ],
+      "css": {
+        "@keyframes weave-dash": {
+          "to": {
+            "stroke-dashoffset": "-22"
+          }
+        },
+        "@utility weave-flow": {
+          "stroke-dasharray": "7 4",
+          "animation": "weave-dash 0.6s linear infinite",
+          "@media (prefers-reduced-motion: reduce)": {
+            "animation": "none"
+          }
+        }
+      },
+      "meta": {
+        "version": "nightly",
+        "commit": "adc2fee8747d7c90642b35dde227ea541d382ee3"
+      }
+    },
+    {
+      "name": "weave-demo",
+      "type": "registry:block",
+      "title": "Weave workflow editor",
+      "description": "An n8n-style workflow editor built on Weave: node palette, run simulation, details dialog, mobile selection bar.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "https://raw.githubusercontent.com/brrock/weave/registry/nightly/weave.json",
+        "badge",
+        "button",
+        "command",
+        "dialog",
+        "input",
+        "label",
+        "separator",
+        "switch"
+      ],
+      "files": [
+        {
+          "path": "src/components/weave-demo/workflow-editor.tsx",
+          "type": "registry:component",
+          "target": "components/weave-demo/workflow-editor.tsx"
+        },
+        {
+          "path": "src/components/weave-demo/nodes.tsx",
+          "type": "registry:component",
+          "target": "components/weave-demo/nodes.tsx"
+        },
+        {
+          "path": "src/components/weave-demo/catalog.ts",
+          "type": "registry:component",
+          "target": "components/weave-demo/catalog.ts"
+        },
+        {
+          "path": "src/components/weave-demo/workflow.ts",
+          "type": "registry:component",
+          "target": "components/weave-demo/workflow.ts"
+        }
+      ],
+      "css": {
+        "@keyframes weave-pulse": {
+          "0%, 100%": {
+            "box-shadow": "0 0 0 2px color-mix(in oklch, var(--color-sky-500) 70%, transparent), 0 0 0 0 color-mix(in oklch, var(--color-sky-500) 35%, transparent)"
+          },
+          "50%": {
+            "box-shadow": "0 0 0 2px color-mix(in oklch, var(--color-sky-500) 70%, transparent), 0 0 0 8px transparent"
+          }
+        },
+        "@utility weave-running": {
+          "animation": "weave-pulse 1.2s ease-out infinite",
+          "@media (prefers-reduced-motion: reduce)": {
+            "animation": "none"
+          }
+        }
+      },
+      "meta": {
+        "version": "nightly",
+        "commit": "adc2fee8747d7c90642b35dde227ea541d382ee3"
+      }
+    }
+  ]
+}
