@@ -11,12 +11,36 @@
       "dependencies": ["lucide-react"],
       "registryDependencies": ["button", "tooltip"],
       "files": [
-        { "path": "src/components/weave/index.ts", "type": "registry:component", "target": "components/weave/index.ts" },
-        { "path": "src/components/weave/store.ts", "type": "registry:component", "target": "components/weave/store.ts" },
-        { "path": "src/components/weave/node.tsx", "type": "registry:component", "target": "components/weave/node.tsx" },
-        { "path": "src/components/weave/edge.tsx", "type": "registry:component", "target": "components/weave/edge.tsx" },
-        { "path": "src/components/weave/panels.tsx", "type": "registry:component", "target": "components/weave/panels.tsx" },
-        { "path": "src/components/weave/canvas.tsx", "type": "registry:component", "target": "components/weave/canvas.tsx" },
+        {
+          "path": "src/components/weave/index.ts",
+          "type": "registry:component",
+          "target": "components/weave/index.ts"
+        },
+        {
+          "path": "src/components/weave/store.ts",
+          "type": "registry:component",
+          "target": "components/weave/store.ts"
+        },
+        {
+          "path": "src/components/weave/node.tsx",
+          "type": "registry:component",
+          "target": "components/weave/node.tsx"
+        },
+        {
+          "path": "src/components/weave/edge.tsx",
+          "type": "registry:component",
+          "target": "components/weave/edge.tsx"
+        },
+        {
+          "path": "src/components/weave/panels.tsx",
+          "type": "registry:component",
+          "target": "components/weave/panels.tsx"
+        },
+        {
+          "path": "src/components/weave/canvas.tsx",
+          "type": "registry:component",
+          "target": "components/weave/canvas.tsx"
+        },
         { "path": "src/components/weave/theme.ts", "type": "registry:component", "target": "components/weave/theme.ts" }
       ],
       "css": {
@@ -34,17 +58,47 @@
       "title": "Weave workflow editor",
       "description": "An n8n-style workflow editor built on Weave: node palette, run simulation, details dialog, mobile selection bar.",
       "dependencies": ["lucide-react"],
-      "registryDependencies": ["{{base}}/weave.json", "badge", "button", "command", "dialog", "input", "label", "separator", "switch"],
+      "registryDependencies": [
+        "{{base}}/weave.json",
+        "badge",
+        "button",
+        "command",
+        "dialog",
+        "input",
+        "label",
+        "separator",
+        "switch"
+      ],
       "files": [
-        { "path": "src/components/weave-demo/workflow-editor.tsx", "type": "registry:component", "target": "components/weave-demo/workflow-editor.tsx" },
-        { "path": "src/components/weave-demo/nodes.tsx", "type": "registry:component", "target": "components/weave-demo/nodes.tsx" },
-        { "path": "src/components/weave-demo/catalog.ts", "type": "registry:component", "target": "components/weave-demo/catalog.ts" },
-        { "path": "src/components/weave-demo/workflow.ts", "type": "registry:component", "target": "components/weave-demo/workflow.ts" }
+        {
+          "path": "src/components/weave-demo/workflow-editor.tsx",
+          "type": "registry:component",
+          "target": "components/weave-demo/workflow-editor.tsx"
+        },
+        {
+          "path": "src/components/weave-demo/nodes.tsx",
+          "type": "registry:component",
+          "target": "components/weave-demo/nodes.tsx"
+        },
+        {
+          "path": "src/components/weave-demo/catalog.ts",
+          "type": "registry:component",
+          "target": "components/weave-demo/catalog.ts"
+        },
+        {
+          "path": "src/components/weave-demo/workflow.ts",
+          "type": "registry:component",
+          "target": "components/weave-demo/workflow.ts"
+        }
       ],
       "css": {
         "@keyframes weave-pulse": {
-          "0%, 100%": { "box-shadow": "0 0 0 2px color-mix(in oklch, var(--color-sky-500) 70%, transparent), 0 0 0 0 color-mix(in oklch, var(--color-sky-500) 35%, transparent)" },
-          "50%": { "box-shadow": "0 0 0 2px color-mix(in oklch, var(--color-sky-500) 70%, transparent), 0 0 0 8px transparent" }
+          "0%, 100%": {
+            "box-shadow": "0 0 0 2px color-mix(in oklch, var(--color-sky-500) 70%, transparent), 0 0 0 0 color-mix(in oklch, var(--color-sky-500) 35%, transparent)"
+          },
+          "50%": {
+            "box-shadow": "0 0 0 2px color-mix(in oklch, var(--color-sky-500) 70%, transparent), 0 0 0 8px transparent"
+          }
         },
         "@utility weave-running": {
           "animation": "weave-pulse 1.2s ease-out infinite",

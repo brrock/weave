@@ -13,11 +13,11 @@ npx shadcn@latest add https://raw.githubusercontent.com/brrock/weave/registry/st
 
 Swap `stable` in the URL for the channel you want:
 
-| Channel | URL segment | Updated |
-| --- | --- | --- |
-| Stable | `stable` | each published GitHub release |
-| Nightly | `nightly` | every commit to `main` |
-| Pinned | a release tag, e.g. `v0.1.0` | never (frozen at that release) |
+| Channel | URL segment                  | Updated                        |
+| ------- | ---------------------------- | ------------------------------ |
+| Stable  | `stable`                     | each published GitHub release  |
+| Nightly | `nightly`                    | every commit to `main`         |
+| Pinned  | a release tag, e.g. `v0.1.0` | never (frozen at that release) |
 
 A channel's items only depend on that same channel, so `weave-demo` from nightly pulls nightly `weave`. Each item's `meta` records the `version` and `commit` it was built from. Allow about 5 minutes after a publish for GitHub's raw-file cache to refresh.
 
@@ -56,14 +56,14 @@ Weave uses your shadcn theme as-is. Surfaces, borders, focus rings, selection an
 
 To restyle the canvas itself, set any of these variables on `:root`, on a theme class, or on one `<Weave className="…">`:
 
-| Variable | Styles | Default |
-| --- | --- | --- |
-| `--weave-dot` | background dot grid | `--muted-foreground` at 35% |
-| `--weave-edge` | resting connections (canvas and minimap) | `--muted-foreground` at 45% |
-| `--weave-edge-hover` | hovered connection | `--foreground` at 70% |
-| `--weave-edge-selected` | selected connection, in-progress connection line | `--primary` |
-| `--weave-edge-flow` | animated connections (`edge.animated`) | `--primary` |
-| `--weave-handle` | port outlines | `--muted-foreground` at 60% |
+| Variable                | Styles                                           | Default                     |
+| ----------------------- | ------------------------------------------------ | --------------------------- |
+| `--weave-dot`           | background dot grid                              | `--muted-foreground` at 35% |
+| `--weave-edge`          | resting connections (canvas and minimap)         | `--muted-foreground` at 45% |
+| `--weave-edge-hover`    | hovered connection                               | `--foreground` at 70%       |
+| `--weave-edge-selected` | selected connection, in-progress connection line | `--primary`                 |
+| `--weave-edge-flow`     | animated connections (`edge.animated`)           | `--primary`                 |
+| `--weave-handle`        | port outlines                                    | `--muted-foreground` at 60% |
 
 ```tsx
 <Weave className="[--weave-edge-flow:var(--color-emerald-500)]" … />

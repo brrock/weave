@@ -1,54 +1,91 @@
-import { useCallback, useMemo, useState } from "react"
-import { Gauge, Moon, Pencil, Play, Plus, Sun, Trash2, Workflow } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from "@/components/ui/command"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
-import { Controls, MiniMap, Weave, shallowArray, useStore, type Flow, type FlowEdge, type FlowNode } from "@/components/weave"
-import { CATALOG, byKey, type CatalogItem, type Kind } from "./catalog"
-import { DemoContext, nodeTypes, type PaletteTarget, type StepData } from "./nodes"
-import { execute, placeNode, seedFlow, stress } from "./workflow"
+import { useCallback, useMemo, useState } from "react";
+import { Gauge, Moon, Pencil, Play, Plus, Sun, Trash2, Workflow } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandShortcut,
+} from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import {
+  Controls,
+  MiniMap,
+  Weave,
+  shallowArray,
+  useStore,
+  type Flow,
+  type FlowEdge,
+  type FlowNode,
+} from "@/components/weave";
+import { CATALOG, byKey, type CatalogItem, type Kind } from "./catalog";
+import { DemoContext, nodeTypes, type PaletteTarget, type StepData } from "./nodes";
+import { execute, placeNode, seedFlow, stress } from "./workflow";
 
 const GROUPS: [Kind, string][] = [
   ["trigger", "Triggers"],
   ["action", "Actions"],
   ["logic", "Flow"],
-]
+];
 
 export function WorkflowEditor() {
-  const [flow] = useState(seedFlow)
-  const [palette, setPalette] = useState<PaletteTarget | null>(null)
-  const [details, setDetails] = useState<string | null>(null)
-  const [running, setRunning] = useState(false)
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"))
-  const nodeCount = useStore(flow, (s) => s.nodeIds.length)
-  const edgeCount = useStore(flow, (s) => s.edges.length)
+  const [flow] = useState(seedFlow);
+  const [palette, setPalette] = useState<PaletteTarget | null>(null);
+  const [details, setDetails] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const nodeCount = useStore(flow, (s) => s.nodeIds.length);
+  const edgeCount = useStore(flow, (s) => s.edges.length);
 
-  const demo = useMemo(() => ({ openPalette: (t: PaletteTarget = {}) => setPalette(t), openDetails: setDetails }), [])
+  const demo = useMemo(() => ({ openPalette: (t: PaletteTarget = {}) => setPalette(t), openDetails: setDetails }), []);
   const edgeToolbar = useCallback(
     (e: FlowEdge) => (
       <>
-        <Button size="icon-xs" variant="ghost" className="pointer-coarse:size-9" aria-label="Insert node" onClick={() => setPalette({ between: e })}>
+        <Button
+          size="icon-xs"
+          variant="ghost"
+          className="pointer-coarse:size-9"
+          aria-label="Insert node"
+          onClick={() => setPalette({ between: e })}
+        >
           <Plus />
         </Button>
-        <Button size="icon-xs" variant="ghost" className="pointer-coarse:size-9" aria-label="Delete connection" onClick={() => flow.remove([], [e.id])}>
+        <Button
+          size="icon-xs"
+          variant="ghost"
+          className="pointer-coarse:size-9"
+          aria-label="Delete connection"
+          onClick={() => flow.remove([], [e.id])}
+        >
           <Trash2 />
         </Button>
       </>
     ),
     [flow],
-  )
+  );
 
-  const toggleTheme = () => setDark(document.documentElement.classList.toggle("dark"))
+  const toggleTheme = () => setDark(document.documentElement.classList.toggle("dark"));
   const run = async () => {
-    setRunning(true)
-    await execute(flow)
-    setRunning(false)
-  }
+    setRunning(true);
+    await execute(flow);
+    setRunning(false);
+  };
 
   return (
     <DemoContext.Provider value={demo}>
@@ -87,9 +124,9 @@ export function WorkflowEditor() {
           edgeToolbar={edgeToolbar}
           onConnectEnd={({ from }) => setPalette({ from })}
           onKeyDown={(e) => {
-            if (e.key !== "Tab") return
-            e.preventDefault()
-            setPalette({})
+            if (e.key !== "Tab") return;
+            e.preventDefault();
+            setPalette({});
           }}
           // Theme hook: runs light up green instead of the default --primary.
           className="flex-1 [--weave-edge-flow:var(--color-emerald-500)]"
@@ -106,59 +143,72 @@ export function WorkflowEditor() {
       <Palette flow={flow} target={palette} onClose={() => setPalette(null)} />
       <Details flow={flow} id={details} onClose={() => setDetails(null)} />
     </DemoContext.Provider>
-  )
+  );
 }
 
 /** Minimap fill: the node's catalog hue (tint classes look like "bg-violet-500/12 …"). */
 const minimapColor = (n: FlowNode) =>
-  n.type === "note" ? "--color-amber-400" : `--color-${/bg-(\w+)-500/.exec(byKey[n.data.key]?.tint ?? "")?.[1] ?? "neutral"}-500`
+  n.type === "note"
+    ? "--color-amber-400"
+    : `--color-${/bg-(\w+)-500/.exec(byKey[n.data.key]?.tint ?? "")?.[1] ?? "neutral"}-500`;
 
 /** Floating actions for the selection: touch has no Delete key or reliable double-click. */
 function SelectionBar({ flow, onEdit }: { flow: Flow; onEdit: (id: string) => void }) {
-  const nodes = useStore(flow, (s) => s.nodeIds.filter((id) => s.nodes[id]?.selected), shallowArray)
-  const edges = useStore(flow, (s) => s.edges.filter((e) => e.selected), shallowArray)
-  const total = nodes.length + edges.length
-  if (!total) return null
-  const only = nodes.length === 1 ? nodes[0] : undefined
-  const editable = only && flow.get().nodes[only]?.type === "step"
+  const nodes = useStore(flow, (s) => s.nodeIds.filter((id) => s.nodes[id]?.selected), shallowArray);
+  const edges = useStore(flow, (s) => s.edges.filter((e) => e.selected), shallowArray);
+  const total = nodes.length + edges.length;
+  if (!total) return null;
+  const only = nodes.length === 1 ? nodes[0] : undefined;
+  const editable = only && flow.get().nodes[only]?.type === "step";
   return (
     <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border bg-card/90 p-1 pl-3 shadow-lg backdrop-blur-md animate-in fade-in-0 slide-in-from-bottom-2">
       <span className="mr-1 text-xs whitespace-nowrap text-muted-foreground tabular-nums">{total} selected</span>
       {editable && (
         <Button variant="ghost" size="sm" className="pointer-coarse:h-9" onClick={() => onEdit(only)}>
-
           <Pencil /> Edit
         </Button>
       )}
-      <Button variant="ghost" size="sm" className="text-destructive pointer-coarse:h-9" onClick={() => flow.removeSelected()}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-destructive pointer-coarse:h-9"
+        onClick={() => flow.removeSelected()}
+      >
         <Trash2 /> Delete
       </Button>
     </div>
-  )
+  );
 }
 
 /** Name matches outrank description matches (cmdk orders groups by their best item). */
 const rank = (value: string, search: string, keywords: string[] = []) => {
-  const q = search.toLowerCase()
-  return value.toLowerCase().includes(q) ? 1 : keywords.join(" ").toLowerCase().includes(q) ? 0.5 : 0
-}
+  const q = search.toLowerCase();
+  return value.toLowerCase().includes(q) ? 1 : keywords.join(" ").toLowerCase().includes(q) ? 0.5 : 0;
+};
 
 function Palette({ flow, target, onClose }: { flow: Flow; target: PaletteTarget | null; onClose: () => void }) {
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState("");
   // Coming from an output (or splicing an edge) needs a node with an input; from an input, one with an output.
-  const needsInput = target?.from?.type === "source" || !!target?.between
-  const items = CATALOG.filter((i) => (needsInput ? i.inputs.length : true) && (target?.from?.type === "target" ? i.outputs.length : true))
+  const needsInput = target?.from?.type === "source" || !!target?.between;
+  const items = CATALOG.filter(
+    (i) => (needsInput ? i.inputs.length : true) && (target?.from?.type === "target" ? i.outputs.length : true),
+  );
   // cmdk ranks items within a group but doesn't reorder groups, so search results go in one flat group.
   const groups: [string, CatalogItem[]][] = query
     ? [["Results", items]]
-    : GROUPS.map(([kind, heading]) => [heading, items.filter((i) => i.kind === kind)])
+    : GROUPS.map(([kind, heading]) => [heading, items.filter((i) => i.kind === kind)]);
   const close = () => {
-    setQuery("")
-    onClose()
-  }
+    setQuery("");
+    onClose();
+  };
 
   return (
-    <CommandDialog open={!!target} onOpenChange={(o) => !o && close()} title="Add node" description="Search for a node to add">
+    <CommandDialog
+      open={!!target}
+      onOpenChange={(o) => !o && close()}
+      title="Add node"
+      description="Search for a node to add"
+    >
       <Command filter={rank}>
         <CommandInput placeholder="Search nodes…" value={query} onValueChange={setQuery} />
         <CommandList>
@@ -173,9 +223,9 @@ function Palette({ flow, target, onClose }: { flow: Flow; target: PaletteTarget 
                       value={item.label}
                       keywords={[item.description]}
                       onSelect={() => {
-                        placeNode(flow, item, target ?? {})
-                        close()
-                        requestAnimationFrame(() => flow.el?.focus())
+                        placeNode(flow, item, target ?? {});
+                        close();
+                        requestAnimationFrame(() => flow.el?.focus());
                       }}
                     >
                       <div className={`grid size-7 place-items-center rounded-md ${item.tint}`}>
@@ -194,13 +244,13 @@ function Palette({ flow, target, onClose }: { flow: Flow; target: PaletteTarget 
         </CommandList>
       </Command>
     </CommandDialog>
-  )
+  );
 }
 
 function Details({ flow, id, onClose }: { flow: Flow; id: string | null; onClose: () => void }) {
-  const node = useStore(flow, (s) => (id ? s.nodes[id] : undefined))
-  const data = node?.data as StepData | undefined
-  const item = data && byKey[data.key]
+  const node = useStore(flow, (s) => (id ? s.nodes[id] : undefined));
+  const data = node?.data as StepData | undefined;
+  const item = data && byKey[data.key];
   return (
     <Dialog open={!!item} onOpenChange={(o) => !o && onClose()}>
       {item && data && (
@@ -219,22 +269,30 @@ function Details({ flow, id, onClose }: { flow: Flow; id: string | null; onClose
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label htmlFor="node-name">Name</Label>
-              <Input id="node-name" value={data.label} onChange={(e) => flow.updateNodeData(id!, { label: e.target.value })} />
+              <Input
+                id="node-name"
+                value={data.label}
+                onChange={(e) => flow.updateNodeData(id!, { label: e.target.value })}
+              />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <Label htmlFor="node-disabled">Disable node</Label>
                 <p className="text-xs text-muted-foreground">Skipped visually, kept in the graph.</p>
               </div>
-              <Switch id="node-disabled" checked={!!data.disabled} onCheckedChange={(v) => flow.updateNodeData(id!, { disabled: v })} />
+              <Switch
+                id="node-disabled"
+                checked={!!data.disabled}
+                onCheckedChange={(v) => flow.updateNodeData(id!, { disabled: v })}
+              />
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="destructive"
               onClick={() => {
-                flow.remove([id!])
-                onClose()
+                flow.remove([id!]);
+                onClose();
               }}
             >
               <Trash2 /> Delete
@@ -244,5 +302,5 @@ function Details({ flow, id, onClose }: { flow: Flow; id: string | null; onClose
         </DialogContent>
       )}
     </Dialog>
-  )
+  );
 }

@@ -1,25 +1,38 @@
-import { createContext, useContext } from "react"
-import { CircleAlert, CircleCheck, LoaderCircle, Plus, Zap } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Handle, type FlowEdge, type HandleRef, type HandleType, type NodeProps, type NodeTypes } from "@/components/weave"
-import { byKey } from "./catalog"
+import { createContext, useContext } from "react";
+import { CircleAlert, CircleCheck, LoaderCircle, Plus, Zap } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Handle,
+  type FlowEdge,
+  type HandleRef,
+  type HandleType,
+  type NodeProps,
+  type NodeTypes,
+} from "@/components/weave";
+import { byKey } from "./catalog";
 
-export type StepData = { key: string; label: string; status?: "running" | "success" | "error"; disabled?: boolean }
+export type StepData = { key: string; label: string; status?: "running" | "success" | "error"; disabled?: boolean };
 
 /** Where a node picked from the palette goes: after/before a handle, or spliced into an edge. */
-export type PaletteTarget = { from?: HandleRef; between?: FlowEdge }
+export type PaletteTarget = { from?: HandleRef; between?: FlowEdge };
 
 export const DemoContext = createContext({
   openPalette: (_target: PaletteTarget = {}) => {},
   openDetails: (_id: string) => {},
-})
+});
 
-const pct = (i: number, n: number) => `${((i + 1) / (n + 1)) * 100}%`
+const pct = (i: number, n: number) => `${((i + 1) / (n + 1)) * 100}%`;
 
 function Ports({ node, ids, type }: { node: string; ids: string[]; type: HandleType }) {
-  const { openPalette } = useContext(DemoContext)
+  const { openPalette } = useContext(DemoContext);
   return ids.map((h, i) => (
-    <Handle key={h} id={h} type={type} style={{ top: pct(i, ids.length) }} className={type === "target" ? "h-4 w-2 rounded-[3px]" : undefined}>
+    <Handle
+      key={h}
+      id={h}
+      type={type}
+      style={{ top: pct(i, ids.length) }}
+      className={type === "target" ? "h-4 w-2 rounded-[3px]" : undefined}
+    >
       {ids.length > 1 && (
         <span
           className={cn(
@@ -44,22 +57,22 @@ function Ports({ node, ids, type }: { node: string; ids: string[]; type: HandleT
         </div>
       )}
     </Handle>
-  ))
+  ));
 }
 
 const STATUS = {
   running: <LoaderCircle className="size-4 animate-spin text-sky-500" />,
   success: <CircleCheck className="size-4 text-emerald-500" />,
   error: <CircleAlert className="size-4 text-destructive" />,
-}
+};
 
 function StepNode({ id, data, selected }: NodeProps<StepData>) {
-  const { openDetails } = useContext(DemoContext)
-  const item = byKey[data.key]
-  if (!item) return null
-  const Icon = item.icon
+  const { openDetails } = useContext(DemoContext);
+  const item = byKey[data.key];
+  if (!item) return null;
+  const Icon = item.icon;
 
-  const multi = item.inputs.length > 1 || item.outputs.length > 1
+  const multi = item.inputs.length > 1 || item.outputs.length > 1;
   return (
     <div
       onDoubleClick={() => openDetails(id)}
@@ -73,7 +86,9 @@ function StepNode({ id, data, selected }: NodeProps<StepData>) {
         data.disabled && "opacity-50 grayscale",
       )}
     >
-      {item.kind === "trigger" && <Zap className="absolute top-1/2 -left-2.5 size-4 -translate-y-1/2 fill-amber-400 text-amber-500" />}
+      {item.kind === "trigger" && (
+        <Zap className="absolute top-1/2 -left-2.5 size-4 -translate-y-1/2 fill-amber-400 text-amber-500" />
+      )}
       <div className={cn("grid size-10 shrink-0 place-items-center rounded-lg", item.tint)}>
         <Icon className="size-5" />
       </div>
@@ -85,7 +100,7 @@ function StepNode({ id, data, selected }: NodeProps<StepData>) {
       <Ports node={id} ids={item.inputs} type="target" />
       <Ports node={id} ids={item.outputs} type="source" />
     </div>
-  )
+  );
 }
 
 function NoteNode({ data, selected }: NodeProps<{ text: string }>) {
@@ -99,7 +114,7 @@ function NoteNode({ data, selected }: NodeProps<{ text: string }>) {
       <div className="mb-1.5 text-[11px] font-semibold tracking-wider uppercase opacity-60">Note</div>
       <p className="leading-relaxed whitespace-pre-wrap">{data.text}</p>
     </div>
-  )
+  );
 }
 
-export const nodeTypes: NodeTypes = { step: StepNode, note: NoteNode }
+export const nodeTypes: NodeTypes = { step: StepNode, note: NoteNode };

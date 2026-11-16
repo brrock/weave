@@ -1,0 +1,4 @@
+{
+  "printWidth": 120,
+  "ignorePatterns": ["src/components/ui/**", "bun.lock"]
+}
