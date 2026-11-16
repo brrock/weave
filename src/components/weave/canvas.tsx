@@ -40,7 +40,8 @@ export interface WeaveProps extends Omit<HTMLAttributes<HTMLDivElement>, "onPoin
 /**
  * Mouse: drag background or scroll to pan, pinch or ⌘/Ctrl+scroll to zoom, Shift-drag to box select.
  * Touch: one finger pans, two fingers pinch/pan, long-press then drag to box select.
- * Keys: Backspace/Delete removes the selection, ⌘A selects all, Esc clears.
+ * Keys: Backspace/Delete removes the selection, ⌘A selects all, Esc clears, ⌘Z / ⇧⌘Z undo and redo.
+
  */
 export function Weave({
   flow,
@@ -135,12 +136,15 @@ export function Weave({
   const keyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(e);
     if (e.defaultPrevented || (e.target as HTMLElement).closest("input,textarea,[contenteditable]")) return;
+    const mod = e.metaKey || e.ctrlKey;
+    const key = e.key.toLowerCase();
     if (e.key === "Backspace" || e.key === "Delete") flow.removeSelected();
     else if (e.key === "Escape") flow.select([]);
-    else if ((e.metaKey || e.ctrlKey) && e.key === "a") {
-      e.preventDefault();
-      flow.select(flow.get().nodeIds);
-    }
+    else if (mod && key === "a") flow.select(flow.get().nodeIds);
+    else if (mod && key === "z" && e.shiftKey) flow.redo();
+    else if (mod && key === "z") flow.undo();
+    else return;
+    e.preventDefault();
   };
 
   return (

@@ -82,14 +82,18 @@ let detachDrag: (() => void) | null = null;
 /** Abandon the active drag without running its `up` (e.g. when a second finger starts a pinch). */
 export const cancelDrag = () => detachDrag?.();
 
-/** Window-level pointer drag; ends on pointerup/cancel. Only one drag is active at a time. */
-export function drag(move: (e: PointerEvent) => void, up?: (e: PointerEvent) => void) {
+/**
+ * Window-level pointer drag; ends on pointerup/cancel. Only one drag is active at a time.
+ * `done` runs however the drag ends, including when it is abandoned (e.g. by a pinch).
+ */
+export function drag(move: (e: PointerEvent) => void, up?: (e: PointerEvent) => void, done?: () => void) {
   cancelDrag();
   const detach = () => {
     removeEventListener("pointermove", move);
     removeEventListener("pointerup", end);
     removeEventListener("pointercancel", end);
     detachDrag = null;
+    done?.();
   };
   const end = (e: PointerEvent) => {
     detach();
@@ -102,6 +106,10 @@ export function drag(move: (e: PointerEvent) => void, up?: (e: PointerEvent) => 
 }
 
 export type Flow = ReturnType<typeof createFlow>;
+
+/** The undoable part of the state. */
+type Doc = Pick<FlowState, "nodes" | "nodeIds" | "edges">;
+const HISTORY_LIMIT = 100;
 
 export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
   let state: FlowState = {
@@ -120,6 +128,21 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
   const pending = new Map<string, HTMLElement>();
   let el: HTMLElement | null = null;
   let frame = 0;
+  // History: snapshots of the document before each change. A change is everything inside one batch.
+  let past: Doc[] = [];
+  let future: Doc[] = [];
+  let depth = 0;
+  let base: Doc | null = null;
+  let dirty = false;
+  let paused = 0;
+  const doc = (): Doc => ({ nodes: state.nodes, nodeIds: state.nodeIds, edges: state.edges });
+  const restore = (d: Doc) => flow.set({ ...d, connected: connectedSet(d.edges) });
+  /** Applies a document change, recording it for undo. */
+  const commit = (patch: Partial<FlowState>) =>
+    flow.batch(() => {
+      dirty ||= !paused;
+      flow.set(patch);
+    });
 
   const flow = {
     /** Grid size nodes snap to while dragging; 1 disables snapping. */
@@ -127,6 +150,7 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
     events: {} as { onConnectEnd?: (e: ConnectEnd) => void },
 
     get: () => state,
+    /** Low-level state write; never recorded in history. */
     set(patch: Partial<FlowState>) {
       state = { ...state, ...patch };
       listeners.forEach((l) => l());
@@ -220,7 +244,8 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
       flow.set({ nodes, edges: additive ? state.edges : deselectEdges(state.edges) });
     },
     toggle(id: string) {
-      flow.updateNode(id, { selected: !state.nodes[id]?.selected });
+      const n = state.nodes[id];
+      if (n) flow.set({ nodes: { ...state.nodes, [id]: { ...n, selected: !n.selected } } });
     },
     selectEdge(id: string, additive = false) {
       if (!additive) flow.select([]);
@@ -256,29 +281,30 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
         nodes ??= { ...state.nodes };
         nodes[id] = { ...n, position: { x, y } };
       }
-      if (nodes) flow.set({ nodes });
+      if (nodes) commit({ nodes });
     },
 
     // ---- mutations ----
     add(newNodes: FlowNode[], newEdges: FlowEdge[] = []) {
       const nodes = { ...state.nodes };
       for (const n of newNodes) nodes[n.id] = n;
-      flow.set({ nodes, nodeIds: [...state.nodeIds, ...newNodes.map((n) => n.id).filter((id) => !state.nodes[id])] });
-      if (newEdges.length) flow.setEdges([...state.edges, ...newEdges]);
+      const nodeIds = [...state.nodeIds, ...newNodes.map((n) => n.id).filter((id) => !state.nodes[id])];
+      const all = [...state.edges, ...newEdges];
+      commit({ nodes, nodeIds, edges: all, connected: connectedSet(all) });
     },
     updateNode(id: string, patch: Partial<FlowNode>) {
       const n = state.nodes[id];
-      if (n) flow.set({ nodes: { ...state.nodes, [id]: { ...n, ...patch } } });
+      if (n) commit({ nodes: { ...state.nodes, [id]: { ...n, ...patch } } });
     },
     updateNodeData(id: string, data: Record<string, unknown>) {
       const n = state.nodes[id];
       if (n) flow.updateNode(id, { data: { ...n.data, ...data } });
     },
     updateEdge(id: string, patch: Partial<FlowEdge>) {
-      flow.set({ edges: state.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) });
+      commit({ edges: state.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) });
     },
     setEdges(edges: FlowEdge[]) {
-      flow.set({ edges, connected: connectedSet(edges) });
+      commit({ edges, connected: connectedSet(edges) });
     },
     /** Connects two handles of opposite type on different nodes; returns null if invalid or duplicate. */
     connect(a: HandleRef, b: HandleRef): FlowEdge | null {
@@ -294,14 +320,70 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
         deadEdges = new Set(edgeIds);
       const nodes = { ...state.nodes };
       for (const id of nodeIds) delete nodes[id];
-      flow.set({ nodes, nodeIds: state.nodeIds.filter((id) => !dead.has(id)) });
-      flow.setEdges(state.edges.filter((e) => !deadEdges.has(e.id) && !dead.has(e.source) && !dead.has(e.target)));
+      const edges = state.edges.filter((e) => !deadEdges.has(e.id) && !dead.has(e.source) && !dead.has(e.target));
+      commit({ nodes, nodeIds: state.nodeIds.filter((id) => !dead.has(id)), edges, connected: connectedSet(edges) });
     },
     removeSelected() {
       flow.remove(
         selectedNodes().map((n) => n.id),
         state.edges.filter((e) => e.selected).map((e) => e.id),
       );
+    },
+
+    // ---- history ----
+    /** Opens a batch: every change until the returned `end()` is one undo step (e.g. a whole drag). */
+    begin() {
+      if (!depth++) {
+        base = doc();
+        dirty = false;
+      }
+      let open = true;
+      return () => {
+        if (!open) return;
+        open = false;
+        if (--depth || !dirty || !base) return;
+        past = [...past.slice(1 - HISTORY_LIMIT), base];
+        future = [];
+        flow.set({}); // canUndo changed
+      };
+    },
+    /** Runs `fn` as one undo step. */
+    batch<T>(fn: () => T): T {
+      const end = flow.begin();
+      try {
+        return fn();
+      } finally {
+        end();
+      }
+    },
+    /** Runs `fn` without recording its changes, for transient state such as run status or animated edges. */
+    untracked<T>(fn: () => T): T {
+      paused++;
+      try {
+        return fn();
+      } finally {
+        paused--;
+      }
+    },
+    undo() {
+      const d = past.at(-1);
+      if (!d || depth) return;
+      past = past.slice(0, -1);
+      future = [...future, doc()];
+      restore(d);
+    },
+    redo() {
+      const d = future.at(-1);
+      if (!d || depth) return;
+      future = future.slice(0, -1);
+      past = [...past, doc()];
+      restore(d);
+    },
+    get canUndo() {
+      return past.length > 0;
+    },
+    get canRedo() {
+      return future.length > 0;
     },
 
     // ---- measuring (batched: one store update per frame of ResizeObserver callbacks) ----
@@ -352,7 +434,6 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
   const selectedNodes = () => state.nodeIds.flatMap((id) => (state.nodes[id]?.selected ? [state.nodes[id]] : []));
 
   // Rounded to half a flow unit so re-measuring at another zoom yields identical values.
-
   const half = (v: number) => Math.round(v * 2) / 2;
 
   function flush() {

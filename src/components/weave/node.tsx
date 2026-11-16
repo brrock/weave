@@ -60,6 +60,7 @@ export const NodeWrapper = memo(function NodeWrapper({ id }: { id: string }) {
       },
       // Clicking (not dragging) one node of a multi-selection narrows the selection to it.
       () => !moved && wasSelected && !e.shiftKey && flow.select([id]),
+      flow.begin(), // the whole drag is one undo step
     );
   };
 

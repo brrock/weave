@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Gauge, Moon, Pencil, Play, Plus, Sun, Trash2, Workflow } from "lucide-react";
+import { Gauge, Moon, Pencil, Play, Plus, Redo2, Sun, Trash2, Undo2, Workflow } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +52,8 @@ export function WorkflowEditor() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const nodeCount = useStore(flow, (s) => s.nodeIds.length);
   const edgeCount = useStore(flow, (s) => s.edges.length);
+  const canUndo = useStore(flow, () => flow.canUndo);
+  const canRedo = useStore(flow, () => flow.canRedo);
 
   const demo = useMemo(() => ({ openPalette: (t: PaletteTarget = {}) => setPalette(t), openDetails: setDetails }), []);
   const edgeToolbar = useCallback(
@@ -102,6 +104,13 @@ export function WorkflowEditor() {
             {nodeCount} nodes · {edgeCount} links
           </Badge>
           <div className="ml-auto flex items-center gap-1.5">
+            <Button variant="ghost" size="icon-sm" aria-label="Undo" disabled={!canUndo} onClick={() => flow.undo()}>
+              <Undo2 />
+            </Button>
+            <Button variant="ghost" size="icon-sm" aria-label="Redo" disabled={!canRedo} onClick={() => flow.redo()}>
+              <Redo2 />
+            </Button>
+
             <Button variant="ghost" size="sm" aria-label="Add 500 nodes" onClick={() => stress(flow)}>
               <Gauge /> <span className="hidden sm:inline">Add 500</span>
             </Button>
@@ -223,7 +232,7 @@ function Palette({ flow, target, onClose }: { flow: Flow; target: PaletteTarget 
                       value={item.label}
                       keywords={[item.description]}
                       onSelect={() => {
-                        placeNode(flow, item, target ?? {});
+                        flow.batch(() => placeNode(flow, item, target ?? {})); // one undo step
                         close();
                         requestAnimationFrame(() => flow.el?.focus());
                       }}

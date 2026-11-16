@@ -106,6 +106,35 @@ check("a port under a connection drag fills with --primary", over[0] === "over" 
 await p.mouse.up();
 await p.close();
 
+// ---- undo / redo ----
+p = await open();
+const pos = (id) => p.locator(`[data-node-id="${id}"]`).evaluate((el) => el.style.transform);
+const undoBtn = p.getByLabel("Undo", { exact: true });
+check("nothing to undo at first", await undoBtn.isDisabled());
+await p.getByRole("button", { name: "Execute" }).click();
+await p.waitForTimeout(400);
+check("a run is not an undo step", await undoBtn.isDisabled());
+const start = await pos("sum");
+const grip = await p.locator('[data-node-id="sum"] .text-sm').first().boundingBox();
+await p.mouse.move(grip.x + 5, grip.y + 5);
+await p.mouse.down();
+for (let i = 1; i <= 10; i++) await p.mouse.move(grip.x + 5 + i * 15, grip.y + 5 + i * 8);
+await p.mouse.up();
+const moved = await pos("sum");
+await p.keyboard.press("ControlOrMeta+z");
+check("⌘Z undoes a whole drag in one step", (await pos("sum")) === start && moved !== start);
+await p.keyboard.press("ControlOrMeta+Shift+z");
+check("⇧⌘Z redoes it", (await pos("sum")) === moved);
+await p.keyboard.press("Backspace");
+check("delete removes the node", (await p.locator('[data-node-id="sum"]').count()) === 0);
+await undoBtn.click();
+check(
+  "Undo restores the node and its edge",
+  (await p.locator('[data-node-id="sum"]').count()) === 1 &&
+    (await p.locator('[data-edge-id="rows:out->sum:in"]').count()) === 1,
+);
+await p.close();
+
 check("no page errors", errors.length === 0, errors);
 
 await b.close();

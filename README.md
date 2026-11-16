@@ -50,6 +50,26 @@ const flow = createFlow(
 
 `flow` is the whole API: `add`, `remove`, `connect`, `updateNode(Data)`, `updateEdge`, `select`, `fitView`, `zoomAt`, `subscribe`/`get` for persistence. Use `useStore(flow, selector)` outside the canvas and `useFlowState(selector)` inside nodes.
 
+## Undo and redo
+
+Every document change made through `flow` (`add`, `remove`, `connect`, `moveNodes`, `updateNode(Data)`, `updateEdge`, `setEdges`, and the clipboard, group and layout helpers below) is recorded; selection, viewport and `flow.set` are not. ⌘/Ctrl+Z undoes and ⇧⌘/Ctrl+Z redoes while the canvas has focus, and a node drag is a single step.
+
+| API                             | Does                                                                         |
+| ------------------------------- | ---------------------------------------------------------------------------- |
+| `flow.undo()` / `flow.redo()`   | step back / forward (the last 100 steps are kept)                            |
+| `flow.canUndo` / `flow.canRedo` | whether there is a step; read with `useStore(flow, () => flow.canUndo)`      |
+| `flow.batch(fn)`                | runs `fn` as one step, e.g. a node insert that also rewires edges            |
+| `flow.begin()`                  | opens a batch and returns `end()`, for steps that span events (custom drags) |
+| `flow.untracked(fn)`            | runs `fn` without recording it, for transient state such as run status       |
+
+```tsx
+flow.batch(() => {
+  flow.add([node]);
+  flow.connect(from, to);
+});
+flow.untracked(() => flow.updateNodeData(id, { status: "running" }));
+```
+
 ## Edges
 
 An edge is plain data; these optional fields control how it looks:

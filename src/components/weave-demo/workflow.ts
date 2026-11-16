@@ -1,4 +1,4 @@
-import { DEFAULT_SIZE, createFlow, edge, type Flow, type FlowNode, type XY } from "@/components/weave";
+import { DEFAULT_SIZE, createFlow, edge, type Flow, type FlowEdge, type FlowNode, type XY } from "@/components/weave";
 import { CATALOG, byKey, type CatalogItem } from "./catalog";
 import type { PaletteTarget, StepData } from "./nodes";
 
@@ -133,28 +133,30 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Simulated run: walks the graph from every trigger, lighting nodes and edges level by level. */
 export async function execute(flow: Flow) {
+  // Run state is transient: keep it out of undo history.
+  const node = (id: string, data: Partial<StepData>) => flow.untracked(() => flow.updateNodeData(id, data));
+  const link = (id: string, patch: Partial<FlowEdge>) => flow.untracked(() => flow.updateEdge(id, patch));
   const s = flow.get();
   const steps = Object.values(s.nodes).filter((n) => n.type === "step");
-  steps.forEach((n) => flow.updateNodeData(n.id, { status: undefined }));
-  for (const e of s.edges) if (e.kind !== "tool") flow.updateEdge(e.id, { label: undefined });
+  steps.forEach((n) => node(n.id, { status: undefined }));
+  for (const e of s.edges) if (e.kind !== "tool") link(e.id, { label: undefined });
 
   let frontier = steps.filter((n) => byKey[n.data.key]?.kind === "trigger").map((n) => n.id);
   const seen = new Set(frontier);
   const lit: string[] = [];
   while (frontier.length) {
-    frontier.forEach((id) => flow.updateNodeData(id, { status: "running" }));
+    frontier.forEach((id) => node(id, { status: "running" }));
     await sleep(650);
     const next: string[] = [];
     for (const id of frontier) {
       const n = flow.get().nodes[id];
       if (!n) continue;
-      flow.updateNodeData(id, { status: "success" });
+      node(id, { status: "success" });
       for (const e of flow.get().edges) {
         if (e.source !== id || (n.data.key === "if" && e.sourceHandle === "false")) continue;
         // Edge labels follow the edge in canvas space: show how many items passed along it.
         const items = n.data.key === "db" ? 12 : 1;
-        flow.updateEdge(e.id, { animated: true, label: `${items} item${items > 1 ? "s" : ""}` });
-
+        link(e.id, { animated: true, label: `${items} item${items > 1 ? "s" : ""}` });
         lit.push(e.id);
         if (seen.has(e.target)) continue;
         seen.add(e.target);
@@ -164,7 +166,7 @@ export async function execute(flow: Flow) {
     frontier = next;
   }
   await sleep(1500);
-  lit.forEach((id) => flow.updateEdge(id, { animated: false }));
+  lit.forEach((id) => link(id, { animated: false }));
 }
 
 /** Adds a rows×cols grid of chained nodes below the current graph. */
