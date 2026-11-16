@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useSyncExternalStore } from "react";
+import { createContext, useContext, useRef, useSyncExternalStore, type ReactNode } from "react";
 
 export type XY = { x: number; y: number };
 export type Side = "left" | "right" | "top" | "bottom";
@@ -31,6 +31,10 @@ export interface FlowEdge<D = any> {
   className?: string;
   /** App data; Weave never reads it. */
   data?: D;
+  /** Shown on the edge in canvas space (pans and zooms with it); keep it a string if you persist edges. */
+  label?: ReactNode;
+  /** Where the label sits along the edge, 0 (source) to 1 (target); default 0.5. */
+  labelAt?: number;
 }
 
 /** Handle centre relative to its node's top-left, in flow units. */

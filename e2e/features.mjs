@@ -37,6 +37,34 @@ const flowing = '[data-edge-id="hook:out->enrich:in"][data-animated] path';
 check("animated edge draws a track and beads", (await p.locator(flowing).count()) === 2);
 check("beads are round dots every 14px", (await css(p, `${flowing}.weave-flow`, "strokeDasharray")) === "0.01px, 14px");
 await p.screenshot({ path: shots + "f1-flow.png" });
+
+// ---- edge labels ----
+const labelOnPath = () =>
+  p.evaluate(() => {
+    const id = "hook:out->enrich:in";
+    const l = document.querySelector(`[data-edge-label="${id}"]`).getBoundingClientRect();
+    const path = document.querySelector(`[data-edge-id="${id}"] path`);
+    const q = path.getPointAtLength(path.getTotalLength() / 2),
+      m = path.getScreenCTM();
+    return Math.hypot(l.x + l.width / 2 - (q.x * m.a + m.e), l.y + l.height / 2 - (q.y * m.d + m.f));
+  });
+check("label renders text", (await p.locator('[data-edge-label="hook:out->enrich:in"]').innerText()) === "1 item");
+check("label sits on the edge midpoint", (await labelOnPath()) < 2, await labelOnPath());
+await p.mouse.move(700, 600);
+await p.mouse.wheel(-120, 80);
+await p.keyboard.down("Meta");
+await p.mouse.wheel(0, -60);
+await p.keyboard.up("Meta");
+await p.waitForTimeout(100);
+check("label pans and zooms with the edge", (await labelOnPath()) < 2, await labelOnPath());
+const at = (await p.locator('[data-edge-label="search:out->enrich:tools"]').boundingBox()).x;
+const mid = await p.evaluate(() => {
+  const path = document.querySelector('[data-edge-id="search:out->enrich:tools"] path');
+  const q = path.getPointAtLength(path.getTotalLength() / 2),
+    m = path.getScreenCTM();
+  return q.x * m.a + m.e;
+});
+check("labelAt moves the label toward the source", at < mid);
 await p.close();
 
 p = await open({ reducedMotion: "reduce" });

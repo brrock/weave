@@ -46,6 +46,8 @@ export function seedFlow() {
       {
         ...edge("search", "out", "enrich", "tools"),
         kind: "tool",
+        label: "tool",
+        labelAt: 0.3,
         className: "[stroke-dasharray:0.01_6] [stroke-linecap:round] [--weave-edge-width:2.5px]",
       },
     ],
@@ -134,6 +136,8 @@ export async function execute(flow: Flow) {
   const s = flow.get();
   const steps = Object.values(s.nodes).filter((n) => n.type === "step");
   steps.forEach((n) => flow.updateNodeData(n.id, { status: undefined }));
+  for (const e of s.edges) if (e.kind !== "tool") flow.updateEdge(e.id, { label: undefined });
+
   let frontier = steps.filter((n) => byKey[n.data.key]?.kind === "trigger").map((n) => n.id);
   const seen = new Set(frontier);
   const lit: string[] = [];
@@ -147,7 +151,10 @@ export async function execute(flow: Flow) {
       flow.updateNodeData(id, { status: "success" });
       for (const e of flow.get().edges) {
         if (e.source !== id || (n.data.key === "if" && e.sourceHandle === "false")) continue;
-        flow.updateEdge(e.id, { animated: true });
+        // Edge labels follow the edge in canvas space: show how many items passed along it.
+        const items = n.data.key === "db" ? 12 : 1;
+        flow.updateEdge(e.id, { animated: true, label: `${items} item${items > 1 ? "s" : ""}` });
+
         lit.push(e.id);
         if (seen.has(e.target)) continue;
         seen.add(e.target);

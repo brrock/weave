@@ -60,14 +60,16 @@ An edge is plain data; these optional fields control how it looks:
 | `kind`      | app-defined category, rendered as `data-kind` on the edge's `<g>` so CSS can target it                     |
 | `className` | classes for the edge's `<g>`; SVG stroke properties and `--weave-edge*` variables set here reach its paths |
 | `data`      | anything your app needs; Weave never reads it                                                              |
+| `label`     | shown on the edge in canvas space, so it pans and zooms with it: a string or any React node                |
+| `labelAt`   | where the label sits along the edge, `0` (source) to `1` (target); default `0.5`                           |
 
 ```tsx
 // A dotted "tool" connection, a little heavier than the rest.
 { ...edge("search", "out", "agent", "tools"), kind: "tool", className: "[stroke-dasharray:0.01_6] [stroke-linecap:round] [--weave-edge-width:2.5px]" }
-flow.updateEdge(id, { animated: true }) // data is flowing
+flow.updateEdge(id, { animated: true, label: "stream · 14 values" }) // data is flowing
 ```
 
-Each edge renders as `<g data-edge-id data-kind data-selected data-animated>` around its visible path(s), so plain CSS works too: `[data-kind="tool"] path { stroke-dasharray: 2 4 }`.
+Each edge renders as `<g data-edge-id data-kind data-selected data-animated>` around its visible path(s), so plain CSS works too: `[data-kind="tool"] path { stroke-dasharray: 2 4 }`. Labels render as `<div data-edge-label="<edge id>" data-kind>` (card surface, muted text); they ignore the pointer so hovering one still reaches the edge. Keep labels strings if you persist or copy edges.
 
 ## Theming
 

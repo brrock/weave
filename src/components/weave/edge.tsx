@@ -23,17 +23,17 @@ const DIR: Record<Side, XY> = {
 };
 const OPPOSITE: Record<Side, Side> = { left: "right", right: "left", top: "bottom", bottom: "top" };
 
-/** Cubic bezier leaving `a` and entering `b` along their handle sides; `mid` is the curve's t=0.5 point. */
+/** Cubic bezier leaving `a` and entering `b` along their handle sides; `at(t)` is the point at t ∈ [0, 1]. */
 export function bezier(a: XY, as: Side, b: XY, bs: Side) {
   const k = Math.max(48, Math.hypot(b.x - a.x, b.y - a.y) * 0.45);
   const c1 = { x: a.x + DIR[as].x * k, y: a.y + DIR[as].y * k };
   const c2 = { x: b.x + DIR[bs].x * k, y: b.y + DIR[bs].y * k };
-  return {
-    c1,
-    c2,
-    d: `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`,
-    mid: { x: (a.x + 3 * c1.x + 3 * c2.x + b.x) / 8, y: (a.y + 3 * c1.y + 3 * c2.y + b.y) / 8 },
+  const at = (t: number) => {
+    const u = 1 - t;
+    const [w0, w1, w2, w3] = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+    return { x: w0 * a.x + w1 * c1.x + w2 * c2.x + w3 * b.x, y: w0 * a.y + w1 * c1.y + w2 * c2.y + w3 * b.y };
   };
+  return { c1, c2, d: `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`, at, mid: at(0.5) };
 }
 
 const SVG = "pointer-events-none absolute top-0 left-0 overflow-visible";
@@ -60,7 +60,13 @@ export const EdgeView = memo(function EdgeView({ edge }: { edge: FlowEdge }) {
   if (!sp || !tp) return null;
   const sb = sm ?? guess("source", sz);
   const tb = tm ?? guess("target", tz);
-  const { d, mid } = bezier({ x: sp.x + sb.x, y: sp.y + sb.y }, sb.side, { x: tp.x + tb.x, y: tp.y + tb.y }, tb.side);
+  const { d, mid, at } = bezier(
+    { x: sp.x + sb.x, y: sp.y + sb.y },
+    sb.side,
+    { x: tp.x + tb.x, y: tp.y + tb.y },
+    tb.side,
+  );
+  const label = edge.label != null && edge.label !== false && at(edge.labelAt ?? 0.5);
 
   return (
     <>
@@ -110,7 +116,16 @@ export const EdgeView = memo(function EdgeView({ edge }: { edge: FlowEdge }) {
           )}
         </g>
       </svg>
-
+      {label && (
+        <div
+          data-edge-label={edge.id}
+          data-kind={edge.kind}
+          className="pointer-events-none absolute -translate-1/2 rounded-md border bg-card px-1.5 py-0.5 text-[11px] leading-4 whitespace-nowrap text-muted-foreground shadow-xs"
+          style={{ left: label.x, top: label.y }}
+        >
+          {edge.label}
+        </div>
+      )}
       {(hover || edge.selected) && (
         <div
           className="absolute z-20 flex -translate-1/2 items-center gap-1 rounded-lg border bg-card p-0.5 shadow-md animate-in fade-in-0 zoom-in-90"
