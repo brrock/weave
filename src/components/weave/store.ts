@@ -15,14 +15,22 @@ export interface FlowNode<D = any> {
   selected?: boolean;
 }
 
-export interface FlowEdge {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface FlowEdge<D = any> {
   id: string;
   source: string;
   sourceHandle: string;
   target: string;
   targetHandle: string;
   selected?: boolean;
+  /** Draws the edge as beads flowing from source to target (a solid line under reduced motion). */
   animated?: boolean;
+  /** App-defined category, rendered as `data-kind` on the edge so CSS can style it (e.g. "tool"). */
+  kind?: string;
+  /** Classes for the edge's `<g>`: SVG stroke properties and `--weave-edge*` variables set here reach its paths. */
+  className?: string;
+  /** App data; Weave never reads it. */
+  data?: D;
 }
 
 /** Handle centre relative to its node's top-left, in flow units. */

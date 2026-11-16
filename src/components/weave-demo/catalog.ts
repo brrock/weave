@@ -26,6 +26,8 @@ export interface CatalogItem {
   tint: string;
   inputs: string[];
   outputs: string[];
+  /** Takes tools: a port on the bottom edge. */
+  tools?: boolean;
 }
 
 const one = { inputs: ["in"], outputs: ["out"] };
@@ -78,6 +80,7 @@ export const CATALOG: CatalogItem[] = [
     icon: Sparkles,
     tint: "bg-fuchsia-500/12 text-fuchsia-600 dark:text-fuchsia-400",
     ...one,
+    tools: true,
   },
   {
     key: "code",

@@ -131,16 +131,21 @@
 /* Mirrors the `css` blocks in registry.json (what `shadcn add` installs). */
 @keyframes weave-dash {
   to {
-    stroke-dashoffset: -22;
+    stroke-dashoffset: -14.01;
   }
 }
 @utility weave-flow {
-  stroke-dasharray: 7 4;
-  animation: weave-dash 0.6s linear infinite;
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-dasharray: 0.01 14;
+  animation: weave-dash 1.1s linear infinite;
   @media (prefers-reduced-motion: reduce) {
+    stroke-width: 2px;
+    stroke-dasharray: none;
     animation: none;
   }
 }
+
 @keyframes weave-pulse {
   0%,
   100% {

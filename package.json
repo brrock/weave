@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "registry:build": "node scripts/build-registry.mjs",
     "test": "bun test",
-    "e2e": "node e2e/edges.mjs && node e2e/theme.mjs && node e2e/run.mjs && node e2e/mobile.mjs",
+    "e2e": "node e2e/features.mjs && node e2e/edges.mjs && node e2e/theme.mjs && node e2e/run.mjs && node e2e/mobile.mjs",
     "lint": "oxlint --deny-warnings",
     "fmt": "oxfmt",
     "check": "tsc --noEmit -p . && oxlint --deny-warnings && oxfmt --check && bun test"

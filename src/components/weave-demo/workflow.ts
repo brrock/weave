@@ -30,6 +30,7 @@ export function seedFlow() {
       step("cron", "schedule", "Every morning", 0, 320),
       step("rows", "db", "Fetch new rows", 360, 320),
       step("sum", "code", "Summarize", 720, 320),
+      step("search", "http", "Search the web", 100, 160),
     ],
     [
       edge("hook", "out", "enrich", "in"),
@@ -41,6 +42,12 @@ export function seedFlow() {
       edge("join", "out", "log", "in"),
       edge("cron", "out", "rows", "in"),
       edge("rows", "out", "sum", "in"),
+      // Per-edge appearance: a dotted "tool" connection (className styles the edge's paths).
+      {
+        ...edge("search", "out", "enrich", "tools"),
+        kind: "tool",
+        className: "[stroke-dasharray:0.01_6] [stroke-linecap:round] [--weave-edge-width:2.5px]",
+      },
     ],
   );
 }

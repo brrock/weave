@@ -99,6 +99,7 @@ function StepNode({ id, data, selected }: NodeProps<StepData>) {
       {data.status && STATUS[data.status]}
       <Ports node={id} ids={item.inputs} type="target" />
       <Ports node={id} ids={item.outputs} type="source" />
+      {item.tools && <Handle id="tools" type="target" side="bottom" />}
     </div>
   );
 }

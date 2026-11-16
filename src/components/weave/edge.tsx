@@ -80,25 +80,37 @@ export const EdgeView = memo(function EdgeView({ edge }: { edge: FlowEdge }) {
             flow.selectEdge(edge.id, e.shiftKey);
           }}
         />
-        <path
-          d={d}
-          fill="none"
-          style={{
-            stroke: edge.animated
-              ? THEME.edgeFlow
-              : edge.selected
-                ? THEME.edgeSelected
-                : hover
-                  ? THEME.edgeHover
-                  : THEME.edge,
-          }}
-          className={cn(
-            "transition-[stroke] [stroke-width:1.75]",
-            edge.selected && "[stroke-width:2.5]",
-            edge.animated && "weave-flow",
+        <g
+          data-edge-id={edge.id}
+          data-kind={edge.kind}
+          data-selected={edge.selected || undefined}
+          data-animated={edge.animated || undefined}
+          className={edge.className}
+        >
+          {edge.animated ? (
+            <>
+              {/* Faint track under the beads. */}
+              <path
+                d={d}
+                fill="none"
+                style={{ stroke: `color-mix(in oklch, ${THEME.edgeFlow} 30%, transparent)`, strokeWidth: 2 }}
+              />
+              <path d={d} fill="none" className="weave-flow" style={{ stroke: THEME.edgeFlow }} />
+            </>
+          ) : (
+            <path
+              d={d}
+              fill="none"
+              className="transition-[stroke]"
+              style={{
+                stroke: edge.selected ? THEME.edgeSelected : hover ? THEME.edgeHover : THEME.edge,
+                strokeWidth: edge.selected ? THEME.edgeWidthSelected : THEME.edgeWidth,
+              }}
+            />
           )}
-        />
+        </g>
       </svg>
+
       {(hover || edge.selected) && (
         <div
           className="absolute z-20 flex -translate-1/2 items-center gap-1 rounded-lg border bg-card p-0.5 shadow-md animate-in fade-in-0 zoom-in-90"

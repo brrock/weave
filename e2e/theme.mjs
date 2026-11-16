@@ -14,7 +14,7 @@ const check = (name, ok, extra = "") => {
 // The visible edge path follows its invisible hit-area path. Colours transition, so let that settle first.
 const stroke = async () => (
   await p.waitForTimeout(300),
-  p.evaluate(() => getComputedStyle(document.querySelector("svg path[pointer-events=stroke] + path")).stroke)
+  p.evaluate(() => getComputedStyle(document.querySelector("[data-edge-id] path")).stroke)
 );
 const nudge = async () => {
   await p.mouse.move(700, 150);

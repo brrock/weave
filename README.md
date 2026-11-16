@@ -21,7 +21,7 @@ Swap `stable` in the URL for the channel you want:
 
 A channel's items only depend on that same channel, so `weave-demo` from nightly pulls nightly `weave`. Each item's `meta` records the `version` and `commit` it was built from. Allow about 5 minutes after a publish for GitHub's raw-file cache to refresh.
 
-This installs `components/weave/*`, the `button`/`tooltip` components it needs, and the `weave-flow` CSS utility.
+This installs `components/weave/*`, the `button`/`tooltip` components it needs, and the `weave-flow` CSS utility (the flowing-edge beads).
 
 ```tsx
 import { Controls, MiniMap, Weave, createFlow, edge, Handle, type NodeProps } from "@/components/weave"
@@ -48,7 +48,26 @@ const flow = createFlow(
 </Weave>
 ```
 
-`flow` is the whole API: `add`, `remove`, `connect`, `updateNode(Data)`, `select`, `fitView`, `zoomAt`, `subscribe`/`get` for persistence. Use `useStore(flow, selector)` outside the canvas and `useFlowState(selector)` inside nodes.
+`flow` is the whole API: `add`, `remove`, `connect`, `updateNode(Data)`, `updateEdge`, `select`, `fitView`, `zoomAt`, `subscribe`/`get` for persistence. Use `useStore(flow, selector)` outside the canvas and `useFlowState(selector)` inside nodes.
+
+## Edges
+
+An edge is plain data; these optional fields control how it looks:
+
+| Field       | Does                                                                                                       |
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
+| `animated`  | draws beads flowing source → target over a faint track (a solid line under `prefers-reduced-motion`)       |
+| `kind`      | app-defined category, rendered as `data-kind` on the edge's `<g>` so CSS can target it                     |
+| `className` | classes for the edge's `<g>`; SVG stroke properties and `--weave-edge*` variables set here reach its paths |
+| `data`      | anything your app needs; Weave never reads it                                                              |
+
+```tsx
+// A dotted "tool" connection, a little heavier than the rest.
+{ ...edge("search", "out", "agent", "tools"), kind: "tool", className: "[stroke-dasharray:0.01_6] [stroke-linecap:round] [--weave-edge-width:2.5px]" }
+flow.updateEdge(id, { animated: true }) // data is flowing
+```
+
+Each edge renders as `<g data-edge-id data-kind data-selected data-animated>` around its visible path(s), so plain CSS works too: `[data-kind="tool"] path { stroke-dasharray: 2 4 }`.
 
 ## Theming
 
@@ -56,14 +75,16 @@ Weave uses your shadcn theme as-is. Surfaces, borders, focus rings, selection an
 
 To restyle the canvas itself, set any of these variables on `:root`, on a theme class, or on one `<Weave className="…">`:
 
-| Variable                | Styles                                           | Default                     |
-| ----------------------- | ------------------------------------------------ | --------------------------- |
-| `--weave-dot`           | background dot grid                              | `--muted-foreground` at 35% |
-| `--weave-edge`          | resting connections (canvas and minimap)         | `--muted-foreground` at 45% |
-| `--weave-edge-hover`    | hovered connection                               | `--foreground` at 70%       |
-| `--weave-edge-selected` | selected connection, in-progress connection line | `--primary`                 |
-| `--weave-edge-flow`     | animated connections (`edge.animated`)           | `--primary`                 |
-| `--weave-handle`        | port outlines                                    | `--muted-foreground` at 60% |
+| Variable                      | Styles                                           | Default                     |
+| ----------------------------- | ------------------------------------------------ | --------------------------- |
+| `--weave-dot`                 | background dot grid                              | `--muted-foreground` at 35% |
+| `--weave-edge`                | resting connections (canvas and minimap)         | `--muted-foreground` at 45% |
+| `--weave-edge-hover`          | hovered connection                               | `--foreground` at 70%       |
+| `--weave-edge-selected`       | selected connection, in-progress connection line | `--primary`                 |
+| `--weave-edge-flow`           | animated connections (`edge.animated`)           | `--primary`                 |
+| `--weave-edge-width`          | resting and hovered connection stroke width      | `1.75px`                    |
+| `--weave-edge-width-selected` | selected connection stroke width                 | `2.5px`                     |
+| `--weave-handle`              | port outlines                                    | `--muted-foreground` at 60% |
 
 ```tsx
 <Weave className="[--weave-edge-flow:var(--color-emerald-500)]" … />
