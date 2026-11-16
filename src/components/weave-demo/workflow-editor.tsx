@@ -115,16 +115,18 @@ const minimapColor = (n: FlowNode) =>
 
 /** Floating actions for the selection: touch has no Delete key or reliable double-click. */
 function SelectionBar({ flow, onEdit }: { flow: Flow; onEdit: (id: string) => void }) {
-  const nodes = useStore(flow, (s) => s.nodeIds.filter((id) => s.nodes[id].selected), shallowArray)
+  const nodes = useStore(flow, (s) => s.nodeIds.filter((id) => s.nodes[id]?.selected), shallowArray)
   const edges = useStore(flow, (s) => s.edges.filter((e) => e.selected), shallowArray)
   const total = nodes.length + edges.length
   if (!total) return null
-  const editable = nodes.length === 1 && flow.get().nodes[nodes[0]].type === "step"
+  const only = nodes.length === 1 ? nodes[0] : undefined
+  const editable = only && flow.get().nodes[only]?.type === "step"
   return (
     <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border bg-card/90 p-1 pl-3 shadow-lg backdrop-blur-md animate-in fade-in-0 slide-in-from-bottom-2">
       <span className="mr-1 text-xs whitespace-nowrap text-muted-foreground tabular-nums">{total} selected</span>
       {editable && (
-        <Button variant="ghost" size="sm" className="pointer-coarse:h-9" onClick={() => onEdit(nodes[0])}>
+        <Button variant="ghost" size="sm" className="pointer-coarse:h-9" onClick={() => onEdit(only)}>
+
           <Pencil /> Edit
         </Button>
       )}

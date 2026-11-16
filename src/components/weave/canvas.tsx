@@ -152,7 +152,7 @@ function pinchZoom(el: HTMLElement, flow: Flow) {
   const touches = new Map<number, XY>()
   let start: { mid: XY; dist: number; zoom: number; anchor: XY } | null = null
   const local = () => {
-    const [p, q] = [...touches.values()]
+    const [p, q] = [...touches.values()] as [XY, XY] // only called with two touches down
     const r = el.getBoundingClientRect()
     return { mid: { x: (p.x + q.x) / 2 - r.left, y: (p.y + q.y) / 2 - r.top }, dist: Math.hypot(p.x - q.x, p.y - q.y) || 1 }
   }
@@ -251,8 +251,9 @@ function visibleNodeIds(s: FlowState) {
     const n = s.nodes[id]
     const z = s.sizes[id] ?? DEFAULT_SIZE
     // Selected nodes stay mounted so dragging one off-screen keeps its state.
-    return n.selected || (n.position.x < v.x1 && n.position.x + z.w > v.x0 && n.position.y < v.y1 && n.position.y + z.h > v.y0)
+    return !!n && (n.selected || (n.position.x < v.x1 && n.position.x + z.w > v.x0 && n.position.y < v.y1 && n.position.y + z.h > v.y0))
   })
+
 }
 
 function visibleEdges(s: FlowState) {

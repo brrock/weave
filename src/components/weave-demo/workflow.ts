@@ -53,8 +53,7 @@ function freeSpot(flow: Flow, pos: XY): XY {
   const s = flow.get()
   const m = 24
   const hits = (y: number) =>
-    s.nodeIds.some((id) => {
-      const p = s.nodes[id].position
+    Object.values(s.nodes).some(({ id, position: p }) => {
       const z = s.sizes[id] ?? DEFAULT_SIZE
       return pos.x < p.x + z.w + m && pos.x + 256 + m > p.x && y < p.y + z.h + m && y + 64 + m > p.y
     })
@@ -67,25 +66,25 @@ function freeSpot(flow: Flow, pos: XY): XY {
 export function placeNode(flow: Flow, item: CatalogItem, { from, between }: PaletteTarget) {
   const s = flow.get()
   const id = Math.random().toString(36).slice(2, 10)
-  const count = s.nodeIds.filter((n) => s.nodes[n].data?.key === item.key).length
+  const count = Object.values(s.nodes).filter((n) => n.data?.key === item.key).length
   const label = count ? `${item.label} ${count + 1}` : item.label
   // Align the new node's centre with the port it hangs off.
   const beside = (node: string, handle: string, dx: number) => {
-    const p = s.nodes[node].position
+    const p = s.nodes[node]?.position ?? { x: 0, y: 0 }
     const h = s.handles[node]?.[handle]
     return { x: p.x + dx, y: p.y + (h ? h.y - 32 : 0) }
   }
 
   let position = flow.el ? flow.screenToFlow({ x: flow.el.clientWidth / 2 - 128, y: flow.el.clientHeight / 2 - 32 }) : { x: 0, y: 0 }
+  const a = between && s.nodes[between.source], b = between && s.nodes[between.target]
   if (from && s.nodes[from.node]) {
     position = beside(from.node, from.handle, from.type === "source" ? GAP : -GAP)
-  } else if (between && s.nodes[between.source] && s.nodes[between.target]) {
+  } else if (between && a && b) {
     // Make room like n8n: push the target's branch right when the gap can't fit another node.
-    const a = s.nodes[between.source].position
-    const shift = a.x + GAP * 2 - s.nodes[between.target].position.x
+    const shift = a.position.x + GAP * 2 - b.position.x
     if (shift > 0) {
       const ids = downstream(flow, between.target, between.source)
-      flow.moveNodes(Object.fromEntries(ids.map((n) => [n, s.nodes[n].position])), shift, 0)
+      flow.moveNodes(Object.fromEntries(ids.flatMap((n) => (s.nodes[n] ? [[n, s.nodes[n].position]] : []))), shift, 0)
     }
     position = beside(between.source, between.sourceHandle, GAP)
   }
@@ -109,9 +108,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 /** Simulated run: walks the graph from every trigger, lighting nodes and edges level by level. */
 export async function execute(flow: Flow) {
   const s = flow.get()
-  const steps = s.nodeIds.filter((id) => s.nodes[id].type === "step")
-  steps.forEach((id) => flow.updateNodeData(id, { status: undefined }))
-  let frontier = steps.filter((id) => byKey[s.nodes[id].data.key].kind === "trigger")
+  const steps = Object.values(s.nodes).filter((n) => n.type === "step")
+  steps.forEach((n) => flow.updateNodeData(n.id, { status: undefined }))
+  let frontier = steps.filter((n) => byKey[n.data.key]?.kind === "trigger").map((n) => n.id)
   const seen = new Set(frontier)
   const lit: string[] = []
   while (frontier.length) {
@@ -145,7 +144,8 @@ export function stress(flow: Flow, rows = 20, cols = 25) {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const id = `${tag}-${r}-${c}`
-      const item = actions[(r + c) % actions.length]
+      const item = actions[(r + c) % actions.length]!
+
       nodes.push(step(id, item.key, `${item.label} ${r * cols + c + 1}`, c * GAP, y0 + r * 120))
       if (c) edges.push(edge(`${tag}-${r}-${c - 1}`, "out", id, "in"))
     }

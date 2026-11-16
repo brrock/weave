@@ -56,7 +56,9 @@ const STATUS = {
 function StepNode({ id, data, selected }: NodeProps<StepData>) {
   const { openDetails } = useContext(DemoContext)
   const item = byKey[data.key]
+  if (!item) return null
   const Icon = item.icon
+
   const multi = item.inputs.length > 1 || item.outputs.length > 1
   return (
     <div

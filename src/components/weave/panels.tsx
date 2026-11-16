@@ -116,7 +116,9 @@ export function MiniMap({ className, width = 200, height = 140, nodeColor }: Min
       const r = 3 / k
       for (const id of s.nodeIds) {
         const n = s.nodes[id]
+        if (!n) continue
         const z = s.sizes[id] ?? DEFAULT_SIZE
+
         const c = colorRef.current?.(n) ?? "--muted-foreground"
         if (!groups.has(c)) groups.set(c, new Path2D())
         groups.get(c)!.roundRect(n.position.x, n.position.y, z.w, z.h, r)

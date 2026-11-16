@@ -171,7 +171,8 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
     bounds(ids = state.nodeIds) {
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
       for (const id of ids) {
-        const p = state.nodes[id].position
+        const p = state.nodes[id]?.position
+        if (!p) continue
         const s = state.sizes[id] ?? DEFAULT_SIZE
         x0 = Math.min(x0, p.x)
         y0 = Math.min(y0, p.y)
@@ -196,13 +197,14 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
       const nodes = { ...state.nodes }
       for (const id of state.nodeIds) {
         const n = nodes[id]
+        if (!n) continue
         const sel = want.has(id) || (additive && !!n.selected)
         if (!!n.selected !== sel) nodes[id] = { ...n, selected: sel }
       }
       flow.set({ nodes, edges: additive ? state.edges : deselectEdges(state.edges) })
     },
     toggle(id: string) {
-      flow.updateNode(id, { selected: !state.nodes[id].selected })
+      flow.updateNode(id, { selected: !state.nodes[id]?.selected })
     },
     selectEdge(id: string, additive = false) {
       if (!additive) flow.select([])
@@ -213,27 +215,25 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
       const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x)
       const y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y)
       const hit = state.nodeIds.filter((id) => {
-        const p = state.nodes[id].position
+        const p = state.nodes[id]?.position
         const s = state.sizes[id] ?? DEFAULT_SIZE
-        return p.x < x1 && p.x + s.w > x0 && p.y < y1 && p.y + s.h > y0
+        return !!p && p.x < x1 && p.x + s.w > x0 && p.y < y1 && p.y + s.h > y0
       })
       flow.select(hit, true)
     },
 
     // ---- dragging ----
     dragOrigins(): Record<string, XY> {
-      return Object.fromEntries(
-        state.nodeIds.filter((id) => state.nodes[id].selected).map((id) => [id, state.nodes[id].position]),
-      )
+      return Object.fromEntries(selectedNodes().map((n) => [n.id, n.position]))
     },
     moveNodes(origins: Record<string, XY>, dx: number, dy: number) {
       const g = flow.snap
       let nodes: FlowState["nodes"] | null = null
-      for (const id in origins) {
+      for (const [id, o] of Object.entries(origins)) {
         const n = state.nodes[id]
         if (!n) continue
-        const x = Math.round((origins[id].x + dx) / g) * g
-        const y = Math.round((origins[id].y + dy) / g) * g
+        const x = Math.round((o.x + dx) / g) * g
+        const y = Math.round((o.y + dy) / g) * g
         if (x === n.position.x && y === n.position.y) continue
         nodes ??= { ...state.nodes }
         nodes[id] = { ...n, position: { x, y } }
@@ -280,7 +280,7 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
     },
     removeSelected() {
       flow.remove(
-        state.nodeIds.filter((id) => state.nodes[id].selected),
+        selectedNodes().map((n) => n.id),
         state.edges.filter((e) => e.selected).map((e) => e.id),
       )
     },
@@ -316,8 +316,7 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
         if (!n || node === from.node) continue
         const s = state.sizes[node] ?? DEFAULT_SIZE
         const inside = p.x >= n.position.x && p.x <= n.position.x + s.w && p.y >= n.position.y && p.y <= n.position.y + s.h
-        for (const handle in state.handles[node]) {
-          const h = state.handles[node][handle]
+        for (const [handle, h] of Object.entries(state.handles[node] ?? {})) {
           if (h.type === from.type) continue
           const d = Math.hypot(n.position.x + h.x - p.x, n.position.y + h.y - p.y)
           if ((inside || d < r) && d < bestD) {
@@ -330,7 +329,10 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
     },
   }
 
+  const selectedNodes = () => state.nodeIds.flatMap((id) => (state.nodes[id]?.selected ? [state.nodes[id]] : []))
+
   // Rounded to half a flow unit so re-measuring at another zoom yields identical values.
+
   const half = (v: number) => Math.round(v * 2) / 2
 
   function flush() {
