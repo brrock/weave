@@ -104,18 +104,5 @@ function StepNode({ id, data, selected }: NodeProps<StepData>) {
   );
 }
 
-function NoteNode({ data, selected }: NodeProps<{ text: string }>) {
-  return (
-    <div
-      className={cn(
-        "w-64 rounded-xl border border-amber-300/70 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100",
-        selected && "ring-4 ring-amber-400/25",
-      )}
-    >
-      <div className="mb-1.5 text-[11px] font-semibold tracking-wider uppercase opacity-60">Note</div>
-      <p className="leading-relaxed whitespace-pre-wrap">{data.text}</p>
-    </div>
-  );
-}
-
-export const nodeTypes: NodeTypes = { step: StepNode, note: NoteNode };
+// Notes (`type: "note"`) are built into Weave.
+export const nodeTypes: NodeTypes = { step: StepNode };

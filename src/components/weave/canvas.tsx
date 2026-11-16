@@ -11,6 +11,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ConnectionLine, EdgeView } from "./edge";
 import { NodeWrapper, ViewContext, type NodeTypes } from "./node";
+import { NoteNode } from "./note";
+
 import { THEME } from "./theme";
 import {
   DEFAULT_SIZE,
@@ -30,7 +32,9 @@ import {
 
 export interface WeaveProps extends Omit<HTMLAttributes<HTMLDivElement>, "onPointerDown"> {
   flow: Flow;
+  /** Your node components by `node.type`. `note` is built in (override it by name). */
   nodeTypes: NodeTypes;
+
   /** Buttons shown on edge hover (or when selected, for touch); defaults to a delete button. */
   edgeToolbar?: (edge: FlowEdge) => ReactNode;
   /** A connection drag (or click) on a handle ended away from any compatible handle. */
@@ -57,7 +61,8 @@ export function Weave({
   ...rest
 }: WeaveProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const view = useMemo(() => ({ nodeTypes, edgeToolbar }), [nodeTypes, edgeToolbar]);
+  // Built-in types; yours win on a name clash.
+  const view = useMemo(() => ({ nodeTypes: { note: NoteNode, ...nodeTypes }, edgeToolbar }), [nodeTypes, edgeToolbar]);
 
   useLayoutEffect(() => {
     flow.events.onConnectEnd = onConnectEnd;

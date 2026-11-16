@@ -50,6 +50,24 @@ const flow = createFlow(
 
 `flow` is the whole API: `add`, `remove`, `connect`, `updateNode(Data)`, `updateEdge`, `select`, `fitView`, `zoomAt`, `subscribe`/`get` for persistence. Use `useStore(flow, selector)` outside the canvas and `useFlowState(selector)` inside nodes.
 
+## Sticky notes
+
+`type: "note"` is built in (your `nodeTypes` can override it by name). Its `data.text` renders as light markdown: `#`–`###` headings, `-`/`*` lists, `**bold**`, `*italic*`, `` `code` `` and `[links](https://…)` (web links only). Double-click to edit; Esc, ⌘/Ctrl+Enter or clicking away saves (one undo step). Select a note to resize it from its corner; the size is stored on `node.size`. Notes and groups draw behind edges and other nodes, and box selection only picks them when fully enclosed.
+
+```tsx
+flow.add([
+  {
+    id: "n1",
+    type: "note",
+    position: { x: 0, y: -200 },
+    data: { text: "## Inbox\n- **triage** first" },
+    size: { w: 280, h: 140 },
+  },
+]);
+```
+
+The fill is `--weave-note` (a warm tint of `--card`). To make your own nodes resizable, put `<NodeResizer />` in them and size the body from the `size` prop. Wrappers carry `data-node-id`, `data-type` and `data-selected` for CSS.
+
 ## Undo and redo
 
 Every document change made through `flow` (`add`, `remove`, `connect`, `moveNodes`, `updateNode(Data)`, `updateEdge`, `setEdges`, and the clipboard, group and layout helpers below) is recorded; selection, viewport and `flow.set` are not. ⌘/Ctrl+Z undoes and ⇧⌘/Ctrl+Z redoes while the canvas has focus, and a node drag is a single step.

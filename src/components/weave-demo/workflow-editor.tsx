@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Copy, Gauge, Moon, Pencil, Play, Plus, Redo2, Sun, Trash2, Undo2, Workflow } from "lucide-react";
+import { Copy, Gauge, Moon, Pencil, Play, Plus, Redo2, StickyNote, Sun, Trash2, Undo2, Workflow } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +36,7 @@ import {
 } from "@/components/weave";
 import { CATALOG, byKey, type CatalogItem, type Kind } from "./catalog";
 import { DemoContext, nodeTypes, type PaletteTarget, type StepData } from "./nodes";
-import { execute, placeNode, seedFlow, stress } from "./workflow";
+import { addNote, execute, placeNode, seedFlow, stress } from "./workflow";
 
 const GROUPS: [Kind, string][] = [
   ["trigger", "Triggers"],
@@ -117,7 +117,11 @@ export function WorkflowEditor() {
             <Button variant="ghost" size="icon-sm" aria-label="Toggle theme" onClick={toggleTheme}>
               {dark ? <Sun /> : <Moon />}
             </Button>
+            <Button variant="ghost" size="icon-sm" aria-label="Add note" onClick={() => addNote(flow)}>
+              <StickyNote />
+            </Button>
             <Separator orientation="vertical" className="mx-1 h-5!" />
+
             <Button variant="outline" size="sm" aria-label="Add node" onClick={() => setPalette({})}>
               <Plus /> <span className="hidden sm:inline">Add node</span>
             </Button>

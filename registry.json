@@ -27,6 +27,11 @@
           "target": "components/weave/node.tsx"
         },
         {
+          "path": "src/components/weave/note.tsx",
+          "type": "registry:component",
+          "target": "components/weave/note.tsx"
+        },
+        {
           "path": "src/components/weave/edge.tsx",
           "type": "registry:component",
           "target": "components/weave/edge.tsx"
@@ -41,7 +46,11 @@
           "type": "registry:component",
           "target": "components/weave/canvas.tsx"
         },
-        { "path": "src/components/weave/theme.ts", "type": "registry:component", "target": "components/weave/theme.ts" }
+        {
+          "path": "src/components/weave/theme.ts",
+          "type": "registry:component",
+          "target": "components/weave/theme.ts"
+        }
       ],
       "css": {
         "@layer components": {
@@ -65,8 +74,11 @@
             "box-shadow": "0 0 0 4px color-mix(in oklch, var(--weave-handle-active, var(--primary)) 25%, transparent)"
           }
         },
-        "@keyframes weave-dash": { "to": { "stroke-dashoffset": "-14.01" } },
-
+        "@keyframes weave-dash": {
+          "to": {
+            "stroke-dashoffset": "-14.01"
+          }
+        },
         "@utility weave-flow": {
           "stroke-width": "4px",
           "stroke-linecap": "round",
@@ -130,7 +142,9 @@
         },
         "@utility weave-running": {
           "animation": "weave-pulse 1.2s ease-out infinite",
-          "@media (prefers-reduced-motion: reduce)": { "animation": "none" }
+          "@media (prefers-reduced-motion: reduce)": {
+            "animation": "none"
+          }
         }
       }
     }

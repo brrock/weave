@@ -13,6 +13,8 @@ export interface FlowNode<D = any> {
   position: XY;
   data: D;
   selected?: boolean;
+  /** Explicit size for resizable nodes (notes, groups, or yours via <NodeResizer>); otherwise measured. */
+  size?: Size;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,6 +64,8 @@ export interface FlowState {
 export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 2.5;
 export const DEFAULT_SIZE: Size = { w: 240, h: 64 };
+/** Node types drawn behind edges and other nodes, and box-selected only when fully enclosed. */
+export const BACKDROP = new Set(["note", "group"]);
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const connectedSet = (edges: FlowEdge[]) =>
@@ -283,10 +287,14 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
       const y0 = Math.min(a.y, b.y),
         y1 = Math.max(a.y, b.y);
       const hit = state.nodeIds.filter((id) => {
-        const p = state.nodes[id]?.position;
+        const n = state.nodes[id];
+        if (!n) return false;
+        const { x, y } = n.position;
         const s = state.sizes[id] ?? DEFAULT_SIZE;
-        return !!p && p.x < x1 && p.x + s.w > x0 && p.y < y1 && p.y + s.h > y0;
+        if (BACKDROP.has(n.type)) return x >= x0 && x + s.w <= x1 && y >= y0 && y + s.h <= y1;
+        return x < x1 && x + s.w > x0 && y < y1 && y + s.h > y0;
       });
+
       flow.select(hit, true);
     },
 

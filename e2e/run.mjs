@@ -75,7 +75,7 @@ await dragTo({ x: 30, y: 640 }, { x: 1400, y: 820 });
 await page.keyboard.up("Shift");
 log(
   "selected after marquee:",
-  await page.evaluate(() => document.querySelectorAll('[data-node-id][style*="z-index"]').length),
+  await page.evaluate(() => document.querySelectorAll("[data-node-id][data-selected]").length),
 );
 await page.keyboard.press("Escape");
 

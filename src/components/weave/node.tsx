@@ -10,13 +10,25 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "@/lib/utils";
-import { drag, useFlow, useFlowState, type FlowEdge, type HandleType, type Side } from "./store";
+import {
+  BACKDROP,
+  DEFAULT_SIZE,
+  drag,
+  useFlow,
+  useFlowState,
+  type FlowEdge,
+  type HandleType,
+  type Side,
+  type Size,
+} from "./store";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface NodeProps<D = any> {
   id: string;
   data: D;
   selected: boolean;
+  /** `node.size`, set by a <NodeResizer> (or by you); apply it to the body to make the node resizable. */
+  size?: Size;
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type NodeTypes = Record<string, ComponentType<NodeProps<any>>>;
@@ -69,19 +81,51 @@ export const NodeWrapper = memo(function NodeWrapper({ id }: { id: string }) {
     <div
       ref={ref}
       data-node-id={id}
+      data-type={node.type}
+      data-selected={node.selected || undefined}
       className="absolute top-0 left-0 cursor-default [contain:layout_style]"
       style={{
         transform: `translate(${node.position.x}px,${node.position.y}px)`,
-        zIndex: node.selected ? 1 : undefined,
+        // Notes and groups sit behind edges and other nodes.
+        zIndex: BACKDROP.has(node.type) ? -1 : node.selected ? 1 : undefined,
       }}
       onPointerDown={onPointerDown}
     >
       <NodeIdContext.Provider value={id}>
-        <Body id={id} data={node.data} selected={!!node.selected} />
+        <Body id={id} data={node.data} selected={!!node.selected} size={node.size} />
       </NodeIdContext.Provider>
     </div>
   );
 });
+
+/** A bottom-right grip that resizes the node it's in (stored as `node.size`, snapped to the grid). */
+export function NodeResizer({ minWidth = 120, minHeight = 60 }: { minWidth?: number; minHeight?: number }) {
+  const id = useNodeId();
+  const flow = useFlow();
+  return (
+    <div
+      data-nodrag=""
+      aria-hidden
+      className="absolute right-0 bottom-0 size-4 cursor-nwse-resize touch-none after:absolute after:right-1 after:bottom-1 after:size-2 after:rounded-br-[3px] after:border-r-2 after:border-b-2 after:border-current after:opacity-40 after:content-[''] pointer-coarse:size-8"
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        const s = flow.get().sizes[id] ?? DEFAULT_SIZE;
+        const p0 = flow.toFlow(e.clientX, e.clientY);
+        const g = flow.snap;
+        drag(
+          (ev) => {
+            const p = flow.toFlow(ev.clientX, ev.clientY);
+            const w = Math.max(minWidth, Math.round((s.w + p.x - p0.x) / g) * g);
+            const h = Math.max(minHeight, Math.round((s.h + p.y - p0.y) / g) * g);
+            flow.updateNode(id, { size: { w, h } });
+          },
+          undefined,
+          flow.begin(),
+        );
+      }}
+    />
+  );
+}
 
 const PLACE: Record<Side, string> = {
   left: "left-0 top-1/2",

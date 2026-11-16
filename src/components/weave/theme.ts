@@ -15,7 +15,10 @@ export const THEME = {
   edgeSelected: "var(--weave-edge-selected, var(--primary))",
   /** Animated (`edge.animated`) connection. */
   edgeFlow: "var(--weave-edge-flow, var(--primary))",
+  /** Sticky note fill (a warm tint of --card, so it follows light/dark). */
+  note: "var(--weave-note, color-mix(in oklab, oklch(0.83 0.16 84) 22%, var(--card)))",
   /** Connection stroke width, resting and selected. */
+
   edgeWidth: "var(--weave-edge-width, 1.75px)",
   edgeWidthSelected: "var(--weave-edge-width-selected, 2.5px)",
 };

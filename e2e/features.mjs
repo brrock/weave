@@ -184,6 +184,40 @@ await p.keyboard.press("ControlOrMeta+d");
 check("⌘D duplicates", (await count())[0] === n0 + 3);
 await p.close();
 
+// ---- sticky notes ----
+p = await open();
+const note = p.locator('[data-node-id="note"]');
+check(
+  "note renders markdown",
+  (await note.locator("strong").innerText()) === "Drag" && (await note.locator("li").count()) === 4,
+);
+check("notes sit behind other nodes", (await note.evaluate((el) => getComputedStyle(el).zIndex)) === "-1");
+const nb = await note.boundingBox();
+await p.mouse.dblclick(nb.x + 30, nb.y + 20);
+await p.keyboard.press("ControlOrMeta+a");
+await p.keyboard.type("# Hello\n- **world**");
+await p.keyboard.press("Escape");
+check(
+  "double-click edits, blur saves",
+  (await note.locator("strong").innerText()) === "world" && (await note.locator("p").first().innerText()) === "Hello",
+);
+await p.mouse.click(nb.x + 30, nb.y + 20);
+const corner = await note.locator("[data-nodrag]").boundingBox();
+const w0 = (await note.boundingBox()).width;
+await p.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2);
+await p.mouse.down();
+await p.mouse.move(corner.x + 160, corner.y + 120, { steps: 8 });
+await p.mouse.up();
+const resized = await note.boundingBox();
+check("the grip resizes a selected note", resized.width > w0 + 100, [w0, resized.width]);
+await p.keyboard.press("ControlOrMeta+z");
+check("resize is one undo step", Math.abs((await note.boundingBox()).width - w0) < 1);
+await p.keyboard.press("ControlOrMeta+z");
+check("text edit is undoable", (await note.locator("strong").innerText()) === "Drag");
+await p.getByLabel("Add note").click();
+check("Add note adds a note", (await p.locator('[data-type="note"]').count()) === 2);
+await p.close();
+
 check("no page errors", errors.length === 0, errors);
 
 await b.close();

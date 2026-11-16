@@ -17,7 +17,7 @@ export function seedFlow() {
         type: "note",
         position: { x: 0, y: -260 },
         data: {
-          text: "Drag from a port to connect.\nDouble-click a node to edit it.\nHover a connection to insert a step.\nTab opens the node palette.",
+          text: "## Lead routing\n- **Drag** from a port to connect\n- Double-click a node to edit it, or a note to write\n- Hover a connection to *insert* a step\n- `Tab` opens the node palette",
         },
       },
       step("hook", "webhook", "New signup", 0, 0),
@@ -55,6 +55,18 @@ export function seedFlow() {
 }
 
 const GAP = 360;
+
+/** Adds a sticky note in the middle of the view. */
+export function addNote(flow: Flow) {
+  const at = flow.el
+    ? flow.screenToFlow({ x: flow.el.clientWidth / 2 - 120, y: flow.el.clientHeight / 2 - 60 })
+    : { x: 0, y: 0 };
+  const id = Math.random().toString(36).slice(2, 10);
+  flow.add([
+    { id, type: "note", position: freeSpot(flow, at), data: { text: "### Note\nDouble-click to write **markdown**." } },
+  ]);
+  flow.select([id]);
+}
 
 /** Nodes reachable from `start` along edges, excluding `stop` (cycle-safe). */
 function downstream(flow: Flow, start: string, stop: string) {
