@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createFlow, edge, type FlowNode } from "./store";
+import { createFlow, edge, parseClip, type FlowNode } from "./store";
 
 const n = (id: string, x = 0, y = 0): FlowNode => ({ id, type: "step", position: { x, y }, data: {} });
 
@@ -80,4 +80,28 @@ test("undo/redo records changes, coalesces batches and skips selection", () => {
   expect(snap()).toEqual({ ids: "a,b", edges: 1, x: 200 });
   f.updateNodeData("b", { label: "B" }); // a new change drops the redo stack
   expect(f.canRedo).toBe(false);
+});
+
+test("copy/paste remaps ids, keeps inner edges and is one undo step", () => {
+  const f = createFlow([n("a"), n("b", 400), n("c", 800)], [edge("a", "out", "b", "in"), edge("b", "out", "c", "in")]);
+  f.select(["a", "b"]);
+  const clip = parseClip(JSON.stringify(f.copy()))!;
+  expect(clip.nodes.map((x) => x.id)).toEqual(["a", "b"]);
+  expect(clip.edges.map((x) => x.id)).toEqual(["a:out->b:in"]); // b→c leaves the selection
+
+  const ids = f.paste(clip, { x: 1000, y: 500 });
+  expect(ids).toHaveLength(2);
+  const [a2, b2] = ids.map((id) => f.get().nodes[id]!);
+  expect([a2!.position, b2!.position]).toEqual([
+    { x: 1000, y: 500 },
+    { x: 1400, y: 500 },
+  ]);
+  expect(f.get().edges.at(-1)).toMatchObject({ source: a2!.id, target: b2!.id, id: `${a2!.id}:out->${b2!.id}:in` });
+  expect(f.get().nodes.a?.selected).toBe(false); // the paste is the new selection
+  f.undo();
+  expect(f.get().nodeIds).toEqual(["a", "b", "c"]);
+
+  expect(parseClip("not json")).toBeNull();
+  expect(parseClip('{"nodes":[{"id":1}]}')).toBeNull();
+  expect(parseClip('{"nodes":[]}')).toBeNull();
 });

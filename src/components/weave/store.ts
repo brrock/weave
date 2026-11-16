@@ -107,6 +107,31 @@ export function drag(move: (e: PointerEvent) => void, up?: (e: PointerEvent) => 
 
 export type Flow = ReturnType<typeof createFlow>;
 
+/** Nodes and the edges between them, as copied to the clipboard (JSON). */
+export type Clip = { nodes: FlowNode[]; edges: FlowEdge[] };
+
+/** Validates untrusted clip data (e.g. pasted text); returns null unless it is a usable clip. */
+export function parseClip(text: string | undefined): Clip | null {
+  let v: unknown;
+  try {
+    v = JSON.parse(text ?? "");
+  } catch {
+    return null;
+  }
+  const str = (x: unknown) => typeof x === "string";
+  const num = (x: unknown) => typeof x === "number" && Number.isFinite(x);
+  const o = v as Partial<Clip> | null;
+  if (!Array.isArray(o?.nodes) || !o.nodes.length) return null;
+  const nodesOk = o.nodes.every((n) => n && str(n.id) && str(n.type) && num(n.position?.x) && num(n.position?.y));
+  const edges = Array.isArray(o.edges) ? o.edges : [];
+  const edgesOk = edges.every(
+    (e) => e && str(e.id) && str(e.source) && str(e.target) && str(e.sourceHandle) && str(e.targetHandle),
+  );
+  return nodesOk && edgesOk ? { nodes: o.nodes, edges } : null;
+}
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+
 /** The undoable part of the state. */
 type Doc = Pick<FlowState, "nodes" | "nodeIds" | "edges">;
 const HISTORY_LIMIT = 100;
@@ -330,7 +355,58 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
       );
     },
 
+    // ---- clipboard ----
+    /** The given nodes (default: the selection) and the edges between them, ready for JSON. */
+    copy(ids = selectedNodes().map((n) => n.id)): Clip {
+      const keep = new Set(ids);
+      const strip = <T>(x: T): T => ({ ...x, selected: undefined });
+
+      return {
+        nodes: ids.flatMap((id) => (state.nodes[id] ? [strip(state.nodes[id])] : [])),
+        edges: state.edges
+          .filter((e) => keep.has(e.source) && keep.has(e.target))
+          // React-node labels can't round-trip through JSON.
+          .map((e) => strip(typeof e.label === "object" ? { ...e, label: undefined } : e)),
+      };
+    },
+    /** Adds a clip with fresh ids, its top-left at `at` (default: offset from the original), and selects it. */
+    paste(clip: Clip, at?: XY): string[] {
+      const ids = new Map<string, string>();
+      for (const n of clip.nodes) {
+        let id = uid();
+        while (state.nodes[id]) id = uid();
+        ids.set(n.id, id);
+      }
+      const x0 = Math.min(...clip.nodes.map((n) => n.position.x));
+      const y0 = Math.min(...clip.nodes.map((n) => n.position.y));
+      const g = flow.snap;
+      const dx = at ? at.x - x0 : 2 * Math.max(g, 20);
+      const dy = at ? at.y - y0 : 2 * Math.max(g, 20);
+      const nodes = clip.nodes.map((n) => ({
+        ...n,
+        id: ids.get(n.id)!,
+        position: { x: Math.round((n.position.x + dx) / g) * g, y: Math.round((n.position.y + dy) / g) * g },
+        selected: true,
+      }));
+      const edges = clip.edges.flatMap((e) => {
+        const s = ids.get(e.source),
+          t = ids.get(e.target);
+        return s && t ? [{ ...e, ...edge(s, e.sourceHandle, t, e.targetHandle), selected: false }] : [];
+      });
+      flow.batch(() => {
+        flow.select([]);
+        flow.add(nodes, edges);
+      });
+      return [...ids.values()];
+    },
+    /** Pastes a copy of the selection next to it. */
+    duplicate() {
+      const clip = flow.copy();
+      return clip.nodes.length ? flow.paste(clip) : [];
+    },
+
     // ---- history ----
+
     /** Opens a batch: every change until the returned `end()` is one undo step (e.g. a whole drag). */
     begin() {
       if (!depth++) {

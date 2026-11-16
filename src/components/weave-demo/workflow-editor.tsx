@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Gauge, Moon, Pencil, Play, Plus, Redo2, Sun, Trash2, Undo2, Workflow } from "lucide-react";
+import { Copy, Gauge, Moon, Pencil, Play, Plus, Redo2, Sun, Trash2, Undo2, Workflow } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -144,7 +144,7 @@ export function WorkflowEditor() {
           <SelectionBar flow={flow} onEdit={setDetails} />
           <MiniMap className="hidden md:block" nodeColor={minimapColor} />
           <div className="pointer-events-none absolute top-4 left-4 z-30 hidden text-xs text-muted-foreground lg:block">
-            Drag to pan · ⌘/pinch to zoom · Shift-drag to select · ⌫ to delete
+            Drag to pan · ⌘/pinch to zoom · Shift-drag to select · ⌫ delete · ⌘C/⌘V copy · ⌘D duplicate · ⌘Z undo
           </div>
         </Weave>
       </div>
@@ -175,6 +175,17 @@ function SelectionBar({ flow, onEdit }: { flow: Flow; onEdit: (id: string) => vo
       {editable && (
         <Button variant="ghost" size="sm" className="pointer-coarse:h-9" onClick={() => onEdit(only)}>
           <Pencil /> Edit
+        </Button>
+      )}
+      {nodes.length > 0 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="pointer-coarse:h-9"
+          aria-label="Duplicate"
+          onClick={() => flow.duplicate()}
+        >
+          <Copy /> <span className="hidden sm:inline">Duplicate</span>
         </Button>
       )}
       <Button

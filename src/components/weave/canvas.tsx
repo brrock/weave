@@ -17,6 +17,7 @@ import {
   FlowContext,
   cancelDrag,
   drag,
+  parseClip,
   shallowArray,
   useFlow,
   useFlowState,
@@ -40,7 +41,8 @@ export interface WeaveProps extends Omit<HTMLAttributes<HTMLDivElement>, "onPoin
 /**
  * Mouse: drag background or scroll to pan, pinch or ⌘/Ctrl+scroll to zoom, Shift-drag to box select.
  * Touch: one finger pans, two fingers pinch/pan, long-press then drag to box select.
- * Keys: Backspace/Delete removes the selection, ⌘A selects all, Esc clears, ⌘Z / ⇧⌘Z undo and redo.
+ * Keys: Backspace/Delete removes the selection, ⌘A selects all, Esc clears, ⌘Z / ⇧⌘Z undo and redo,
+ * ⌘C / ⌘X / ⌘V copy, cut and paste (at the pointer), ⌘D duplicates.
 
  */
 export function Weave({
@@ -87,6 +89,7 @@ export function Weave({
     el.addEventListener("gesturestart", onGestureStart);
     el.addEventListener("gesturechange", onGestureChange);
     const stopPinch = pinchZoom(el, flow);
+    const stopClipboard = clipboard(el, flow);
     // Two frames: let the first ResizeObserver pass measure nodes before fitting.
     if (fitViewOnInit) requestAnimationFrame(() => requestAnimationFrame(() => flow.fitView(false, 0.4)));
     return () => {
@@ -95,6 +98,7 @@ export function Weave({
       el.removeEventListener("gesturestart", onGestureStart);
       el.removeEventListener("gesturechange", onGestureChange);
       stopPinch();
+      stopClipboard();
       flow.mount(null);
     };
   }, [flow, fitViewOnInit]);
@@ -143,6 +147,7 @@ export function Weave({
     else if (mod && key === "a") flow.select(flow.get().nodeIds);
     else if (mod && key === "z" && e.shiftKey) flow.redo();
     else if (mod && key === "z") flow.undo();
+    else if (mod && key === "d") flow.duplicate();
     else return;
     e.preventDefault();
   };
@@ -184,6 +189,39 @@ export function Weave({
 }
 
 const EDITABLE = "input,textarea,select,[contenteditable]";
+
+/** ⌘C/⌘X/⌘V via native clipboard events (no permission prompts): the selection travels as JSON text. */
+function clipboard(el: HTMLElement, flow: Flow) {
+  let pointer: XY | null = null;
+  const track = (e: globalThis.PointerEvent) => void (pointer = { x: e.clientX, y: e.clientY });
+  const leave = () => void (pointer = null);
+  const ours = (e: ClipboardEvent) => !(e.target as Element).closest(EDITABLE) && !!e.clipboardData;
+  const copy = (e: ClipboardEvent) => {
+    const clip = flow.copy();
+    if (!ours(e) || !clip.nodes.length) return;
+    e.preventDefault();
+    e.clipboardData!.setData("text/plain", JSON.stringify(clip));
+    if (e.type === "cut") flow.removeSelected();
+  };
+  const paste = (e: ClipboardEvent) => {
+    const clip = ours(e) && parseClip(e.clipboardData!.getData("text/plain"));
+    if (!clip) return;
+    e.preventDefault();
+    flow.paste(clip, pointer ? flow.toFlow(pointer.x, pointer.y) : undefined);
+  };
+  el.addEventListener("pointermove", track);
+  el.addEventListener("pointerleave", leave);
+  el.addEventListener("copy", copy);
+  el.addEventListener("cut", copy);
+  el.addEventListener("paste", paste);
+  return () => {
+    el.removeEventListener("pointermove", track);
+    el.removeEventListener("pointerleave", leave);
+    el.removeEventListener("copy", copy);
+    el.removeEventListener("cut", copy);
+    el.removeEventListener("paste", paste);
+  };
+}
 
 /** Two-finger pinch + pan. Runs in the capture phase so a second finger never starts a node drag. */
 function pinchZoom(el: HTMLElement, flow: Flow) {

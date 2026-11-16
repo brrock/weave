@@ -135,6 +135,55 @@ check(
 );
 await p.close();
 
+// ---- clipboard ----
+p = await open();
+await p.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+const count = () =>
+  p.evaluate(() => [
+    document.querySelectorAll("[data-node-id]").length,
+    document.querySelectorAll("[data-edge-id]").length,
+  ]);
+const click = async (id, shift = false) => {
+  const r = await p.locator(`[data-node-id="${id}"] .text-sm`).first().boundingBox();
+  if (shift) await p.keyboard.down("Shift");
+  await p.mouse.click(r.x + 5, r.y + 5);
+  if (shift) await p.keyboard.up("Shift");
+};
+const [n0, e0] = await count();
+await click("rows");
+await click("sum", true);
+await p.keyboard.press("ControlOrMeta+c");
+const copied = await p.evaluate(() => navigator.clipboard.readText());
+check(
+  "⌘C puts the selection on the clipboard as JSON",
+  JSON.parse(copied).nodes.length === 2 && JSON.parse(copied).edges.length === 1,
+);
+await p.mouse.move(900, 720);
+await p.keyboard.press("ControlOrMeta+v");
+await p.waitForTimeout(100);
+const [n1, e1] = await count();
+check("⌘V pastes nodes and the edge between them", n1 === n0 + 2 && e1 === e0 + 1, [n0, e0, n1, e1]);
+const pasted = await p.evaluate(() => {
+  const sel = [...document.querySelectorAll("[data-node-id]")].filter((n) => n.style.zIndex === "1");
+  return sel.map((n) => [n.dataset.nodeId, n.getBoundingClientRect().left, n.getBoundingClientRect().top]);
+});
+check(
+  "pasted nodes get new ids and the selection",
+  pasted.length === 2 && pasted.every(([id]) => id !== "rows" && id !== "sum"),
+  pasted,
+);
+const left = Math.min(...pasted.map((x) => x[1])),
+  top = Math.min(...pasted.map((x) => x[2]));
+check("paste lands at the pointer", Math.abs(left - 900) < 20 && Math.abs(top - 720) < 20, [left, top]);
+await p.keyboard.press("ControlOrMeta+x");
+check("⌘X cuts the selection", (await count())[0] === n0);
+await p.keyboard.press("ControlOrMeta+z");
+check("cut is undoable", (await count())[0] === n0 + 2);
+await click("hook");
+await p.keyboard.press("ControlOrMeta+d");
+check("⌘D duplicates", (await count())[0] === n0 + 3);
+await p.close();
+
 check("no page errors", errors.length === 0, errors);
 
 await b.close();

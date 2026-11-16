@@ -70,6 +70,17 @@ flow.batch(() => {
 flow.untracked(() => flow.updateNodeData(id, { status: "running" }));
 ```
 
+## Copy and paste
+
+With the canvas focused, ⌘/Ctrl+C copies the selected nodes and the edges between them to the clipboard as JSON text (`{ "nodes": [...], "edges": [...] }`), ⌘/Ctrl+X cuts, ⌘/Ctrl+V pastes with fresh ids at the pointer, and ⌘/Ctrl+D duplicates in place. Pasted text is validated, so JSON from another app or an agent works if it has that shape. They use the browser's clipboard events, so there are no permission prompts.
+
+| API                     | Does                                                                                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `flow.copy(ids?)`       | the nodes (default: the selection) and the edges between them, as a `Clip`                                                                   |
+| `flow.paste(clip, at?)` | adds the clip with new ids, its top-left at `at` (default: just below-right of the original), selects it, returns the new ids; one undo step |
+| `flow.duplicate()`      | `paste(copy())`                                                                                                                              |
+| `parseClip(text)`       | validates untrusted JSON into a `Clip`, or `null`                                                                                            |
+
 ## Edges
 
 An edge is plain data; these optional fields control how it looks:
