@@ -19,4 +19,5 @@ export const THEME = {
   edgeWidth: "var(--weave-edge-width, 1.75px)",
   edgeWidthSelected: "var(--weave-edge-width-selected, 2.5px)",
 };
-// Also: --weave-handle (port outline) is applied as a class in node.tsx, defaulting to muted-foreground at 60%.
+// Ports are styled in CSS (registry.json → @layer components) from --weave-handle, --weave-handle-fill,
+// --weave-handle-active and --weave-handle-size, plus the handle's data-* attributes.

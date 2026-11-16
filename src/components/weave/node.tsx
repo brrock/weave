@@ -95,7 +95,11 @@ export interface HandleProps extends HTMLAttributes<HTMLDivElement> {
   side?: Side;
 }
 
-/** A connection port. Place it inside a node; override position with `style` (e.g. `top: "30%"`). */
+/**
+ * A connection port. Place it inside a node; override position with `style` (e.g. `top: "30%"`).
+ * Only position and hit area live here; the look comes from the `weave` CSS (`--weave-handle*` variables
+ * and `data-type`/`data-side`/`data-connected`/`data-state`), so plain CSS or utilities restyle it.
+ */
 export function Handle({ id, type, side = type === "source" ? "right" : "left", className, ...rest }: HandleProps) {
   const node = useNodeId();
   const flow = useFlow();
@@ -109,18 +113,17 @@ export function Handle({ id, type, side = type === "source" ? "right" : "left", 
   return (
     <div
       data-handle-id={id}
-      data-handle-type={type}
+      data-type={type}
       data-side={side}
       data-connected={connected}
       data-state={state}
       {...rest}
       className={cn(
-        "group/handle absolute z-10 size-3 -translate-1/2 cursor-crosshair rounded-full border-2 border-[color:var(--weave-handle,color-mix(in_oklch,var(--muted-foreground)_60%,transparent))] bg-background transition-[background-color,border-color,box-shadow]",
-        "before:absolute before:-inset-2 before:content-[''] pointer-coarse:before:-inset-4 hover:border-primary hover:bg-primary",
-        "data-[state=valid]:border-primary data-[state=over]:border-primary data-[state=over]:bg-primary data-[state=over]:ring-4 data-[state=over]:ring-primary/25",
+        "group/handle absolute z-10 -translate-1/2 before:absolute before:-inset-2 before:content-[''] pointer-coarse:before:-inset-4",
         PLACE[side],
         className,
       )}
+
       onPointerDown={(e) => {
         if (e.button !== 0 || e.target !== e.currentTarget) return;
         flow.startConnection({ node, handle: id, type }, e.nativeEvent);

@@ -21,7 +21,7 @@ Swap `stable` in the URL for the channel you want:
 
 A channel's items only depend on that same channel, so `weave-demo` from nightly pulls nightly `weave`. Each item's `meta` records the `version` and `commit` it was built from. Allow about 5 minutes after a publish for GitHub's raw-file cache to refresh.
 
-This installs `components/weave/*`, the `button`/`tooltip` components it needs, and the `weave-flow` CSS utility (the flowing-edge beads).
+This installs `components/weave/*`, the `button`/`tooltip` components it needs, and Weave's CSS: the port styles and the `weave-flow` utility (the flowing-edge beads).
 
 ```tsx
 import { Controls, MiniMap, Weave, createFlow, edge, Handle, type NodeProps } from "@/components/weave"
@@ -70,6 +70,29 @@ flow.updateEdge(id, { animated: true, label: "stream · 14 values" }) // data is
 ```
 
 Each edge renders as `<g data-edge-id data-kind data-selected data-animated>` around its visible path(s), so plain CSS works too: `[data-kind="tool"] path { stroke-dasharray: 2 4 }`. Labels render as `<div data-edge-label="<edge id>" data-kind>` (card surface, muted text); they ignore the pointer so hovering one still reaches the edge. Keep labels strings if you persist or copy edges.
+
+## Handles
+
+`<Handle>` only positions the port (and widens its hit area); its look is plain CSS in `@layer components` with zero specificity, so a class on the handle or any app stylesheet wins without `!important`. Restyle through the variables below or the handle's attributes:
+
+| Attribute        | Values                                                         |
+| ---------------- | -------------------------------------------------------------- |
+| `data-handle-id` | the handle's `id`                                              |
+| `data-type`      | `source` or `target`                                           |
+| `data-side`      | `left`, `right`, `top` or `bottom`                             |
+| `data-connected` | `true` when at least one edge uses it                          |
+| `data-state`     | `valid` (a connection drag could end here) or `over` (it will) |
+
+```css
+.port {
+  width: 11px;
+  height: 11px;
+  border-width: 1.5px;
+} /* <Handle className="port" … /> */
+[data-type="source"][data-connected="true"] {
+  --weave-handle-fill: var(--weave-handle);
+}
+```
 
 ## Theming
 

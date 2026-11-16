@@ -73,6 +73,40 @@ await p.waitForTimeout(900);
 check("reduced motion draws a solid line", (await css(p, `${flowing}.weave-flow`, "strokeDasharray")) === "none");
 await p.close();
 
+// ---- handles: positioned by the component, styled by CSS variables and data-* ----
+p = await open();
+const out = '[data-node-id="hook"] [data-handle-id="out"]';
+check("handle exposes data-type", (await p.locator(out).getAttribute("data-type")) === "source");
+check(
+  "handle is a 12px ring by default",
+  (await css(p, out, "width")) === "12px" && (await css(p, out, "borderRadius")) === "9999px",
+);
+check(
+  "utilities on <Handle> override the look",
+  (await css(p, '[data-node-id="enrich"] [data-handle-id="in"]', "width")) === "8px",
+);
+await p.evaluate(() => document.documentElement.style.setProperty("--weave-handle-size", "16px"));
+check("--weave-handle-size resizes ports", (await css(p, out, "width")) === "16px");
+await p.addStyleTag({ content: '[data-type="source"][data-connected="true"] { background: rgb(1, 2, 3) }' });
+await p.waitForTimeout(300); // ports transition their colours
+check("plain CSS on data-* restyles ports", (await css(p, out, "backgroundColor")) === "rgb(1, 2, 3)");
+const box = await p.locator('[data-node-id="sum"] [data-handle-id="out"]').boundingBox();
+const target = await p.locator('[data-node-id="log"] [data-handle-id="in"]').boundingBox();
+await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+await p.mouse.down();
+await p.mouse.move(target.x + 4, target.y + 4, { steps: 10 });
+await p.waitForTimeout(300);
+const over = await p.evaluate(() => {
+  const h = document.querySelector('[data-node-id="log"] [data-handle-id="in"]');
+  const primary = h.appendChild(document.createElement("i"));
+  primary.style.color = "var(--primary)";
+  return [h.dataset.state, getComputedStyle(h).backgroundColor, getComputedStyle(primary).color];
+});
+check("a port under a connection drag fills with --primary", over[0] === "over" && over[1] === over[2], over);
+await p.mouse.up();
+await p.close();
+
 check("no page errors", errors.length === 0, errors);
+
 await b.close();
 process.exit(failed ? 1 : 0);

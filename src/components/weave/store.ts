@@ -381,7 +381,7 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
           x: half((b.left + b.width / 2 - r.left) / z),
           y: half((b.top + b.height / 2 - r.top) / z),
           side: el.dataset.side as Side,
-          type: el.dataset.handleType as HandleType,
+          type: el.dataset.type as HandleType,
         };
         const o = old[el.dataset.handleId!];
         const keep = o && o.x === box.x && o.y === box.y && o.side === box.side && o.type === box.type;

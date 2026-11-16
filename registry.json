@@ -44,7 +44,29 @@
         { "path": "src/components/weave/theme.ts", "type": "registry:component", "target": "components/weave/theme.ts" }
       ],
       "css": {
+        "@layer components": {
+          ":where([data-handle-id])": {
+            "box-sizing": "border-box",
+            "width": "var(--weave-handle-size, 12px)",
+            "height": "var(--weave-handle-size, 12px)",
+            "border": "2px solid var(--weave-handle, color-mix(in oklch, var(--muted-foreground) 60%, transparent))",
+            "border-radius": "9999px",
+            "background": "var(--weave-handle-fill, var(--background))",
+            "cursor": "crosshair",
+            "transition": "background-color 0.15s, border-color 0.15s, box-shadow 0.15s"
+          },
+          ":where([data-handle-id]:hover, [data-handle-id][data-state])": {
+            "border-color": "var(--weave-handle-active, var(--primary))"
+          },
+          ":where([data-handle-id]:hover, [data-handle-id][data-state=\"over\"])": {
+            "background": "var(--weave-handle-active, var(--primary))"
+          },
+          ":where([data-handle-id][data-state=\"over\"])": {
+            "box-shadow": "0 0 0 4px color-mix(in oklch, var(--weave-handle-active, var(--primary)) 25%, transparent)"
+          }
+        },
         "@keyframes weave-dash": { "to": { "stroke-dashoffset": "-14.01" } },
+
         "@utility weave-flow": {
           "stroke-width": "4px",
           "stroke-linecap": "round",
