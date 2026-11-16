@@ -12,6 +12,14 @@ const step = (id: string, key: string, label: string, x: number, y: number): Flo
 export function seedFlow() {
   return createFlow(
     [
+      // A group frames nodes whose `parent` is its id; drag its title bar or collapse it.
+      {
+        id: "digest",
+        type: "group",
+        position: { x: -40, y: 260 },
+        size: { w: 1060, h: 180 },
+        data: { title: "Nightly digest" },
+      },
       {
         id: "note",
         type: "note",
@@ -27,9 +35,9 @@ export function seedFlow() {
       step("sales", "chat", "Notify sales", 1080, 100),
       step("join", "merge", "Combine", 1440, -16),
       step("log", "db", "Log result", 1800, 0),
-      step("cron", "schedule", "Every morning", 0, 320),
-      step("rows", "db", "Fetch new rows", 360, 320),
-      step("sum", "code", "Summarize", 720, 320),
+      { ...step("cron", "schedule", "Every morning", 0, 320), parent: "digest" },
+      { ...step("rows", "db", "Fetch new rows", 360, 320), parent: "digest" },
+      { ...step("sum", "code", "Summarize", 720, 320), parent: "digest" },
       step("search", "http", "Search the web", 100, 160),
     ],
     [

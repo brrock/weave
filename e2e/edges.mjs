@@ -17,10 +17,9 @@ const c = async (s) => {
 };
 const overlaps = () =>
   p.evaluate(() => {
-    const rs = [...document.querySelectorAll("[data-node-id]")].map((n) => [
-      n.dataset.nodeId,
-      n.firstElementChild.getBoundingClientRect(),
-    ]);
+    const rs = [...document.querySelectorAll("[data-node-id]:not([data-type=group]):not([data-type=note])")].map(
+      (n) => [n.dataset.nodeId, n.firstElementChild.getBoundingClientRect()],
+    );
     const out = [];
     for (let i = 0; i < rs.length; i++)
       for (let j = i + 1; j < rs.length; j++) {

@@ -218,6 +218,79 @@ await p.getByLabel("Add note").click();
 check("Add note adds a note", (await p.locator('[data-type="note"]').count()) === 2);
 await p.close();
 
+// ---- groups ----
+p = await open();
+{
+  const group = p.locator('[data-node-id="digest"]');
+  const x = (id) => p.locator(`[data-node-id="${id}"]`).evaluate((el) => el.getBoundingClientRect().x);
+  check("group renders its title", (await group.innerText()).includes("Nightly digest"));
+  // Connect a node inside the group to one outside.
+  const from = await p.locator('[data-node-id="sum"] [data-handle-id="out"]').boundingBox();
+  const to = await p.locator('[data-node-id="log"] .text-sm').first().boundingBox();
+  await p.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await p.mouse.down();
+  await p.mouse.move(to.x + 10, to.y + 5, { steps: 15 });
+  await p.mouse.up();
+  check("edge from inside the group connects", (await p.locator('[data-edge-id="sum:out->log:in"]').count()) === 1);
+
+  const bar = await group.locator("span").first().boundingBox();
+  const [g0, c0] = [await x("digest"), await x("cron")];
+  await p.mouse.move(bar.x + 40, bar.y + 5);
+  await p.mouse.down();
+  await p.mouse.move(bar.x + 140, bar.y + 5, { steps: 6 });
+  await p.mouse.up();
+  const [g1, c1] = [await x("digest"), await x("cron")];
+  check("dragging the title bar moves the group and its nodes", g1 - g0 > 50 && Math.abs(g1 - g0 - (c1 - c0)) < 1, [
+    g1 - g0,
+    c1 - c0,
+  ]);
+
+  // The frame body lets clicks through to the canvas: a drag inside it pans.
+  const body = await group.boundingBox();
+  await p.mouse.move(body.x + 20, body.y + body.height - 12);
+  await p.mouse.down();
+  await p.mouse.move(body.x + 20, body.y + body.height - 72, { steps: 4 });
+  await p.mouse.up();
+  check("dragging inside the frame pans the canvas", Math.abs((await group.boundingBox()).y - (body.y - 60)) < 2);
+
+  await p.getByLabel("Collapse group").click();
+  await p.waitForTimeout(100); // the frame re-measures on the next frame
+
+  check(
+    "collapse hides the contents",
+    (await p.locator('[data-node-id="rows"]').count()) === 0 && (await group.innerText()).includes("3 nodes"),
+  );
+  check("edges inside a collapsed group hide", (await p.locator('[data-edge-id="rows:out->sum:in"]').count()) === 0);
+  const end = await p.evaluate(() => {
+    const path = document.querySelector('[data-edge-id="sum:out->log:in"] path');
+    const q = path.getPointAtLength(0),
+      m = path.getScreenCTM();
+    const g = document.querySelector('[data-node-id="digest"]').getBoundingClientRect();
+    return [q.x * m.a + m.e - g.right, q.y * m.d + m.f - (g.top + g.height / 2)];
+  });
+  check("edges leaving a collapsed group start at its side", Math.abs(end[0]) < 2 && Math.abs(end[1]) < 2, end);
+  await p.getByLabel("Expand group").click();
+  check("expand shows them again", (await p.locator('[data-node-id="rows"]').count()) === 1);
+
+  await p.keyboard.press("Escape");
+  const click = async (id, shift) => {
+    const r = await p.locator(`[data-node-id="${id}"] .text-sm`).first().boundingBox();
+    if (shift) await p.keyboard.down("Shift");
+    await p.mouse.click(r.x + 5, r.y + 5);
+    if (shift) await p.keyboard.up("Shift");
+  };
+  await click("hook");
+  await click("enrich", true);
+  await p.keyboard.press("ControlOrMeta+g");
+  check("⌘G groups the selection", (await p.locator('[data-type="group"]').count()) === 2);
+  await p.getByRole("button", { name: "Ungroup" }).click();
+  check(
+    "Ungroup removes the frame, keeps the nodes",
+    (await p.locator('[data-type="group"]').count()) === 1 && (await p.locator('[data-node-id="hook"]').count()) === 1,
+  );
+}
+await p.close();
+
 check("no page errors", errors.length === 0, errors);
 
 await b.close();

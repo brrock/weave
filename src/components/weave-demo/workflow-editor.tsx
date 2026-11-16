@@ -1,5 +1,20 @@
 import { useCallback, useMemo, useState } from "react";
-import { Copy, Gauge, Moon, Pencil, Play, Plus, Redo2, StickyNote, Sun, Trash2, Undo2, Workflow } from "lucide-react";
+import {
+  Copy,
+  Gauge,
+  Group,
+  Moon,
+  Pencil,
+  Play,
+  Plus,
+  Redo2,
+  StickyNote,
+  Sun,
+  Trash2,
+  Undo2,
+  Ungroup,
+  Workflow,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -148,7 +163,8 @@ export function WorkflowEditor() {
           <SelectionBar flow={flow} onEdit={setDetails} />
           <MiniMap className="hidden md:block" nodeColor={minimapColor} />
           <div className="pointer-events-none absolute top-4 left-4 z-30 hidden text-xs text-muted-foreground lg:block">
-            Drag to pan · ⌘/pinch to zoom · Shift-drag to select · ⌫ delete · ⌘C/⌘V copy · ⌘D duplicate · ⌘Z undo
+            Drag to pan · ⌘/pinch to zoom · Shift-drag to select · ⌫ delete · ⌘C/⌘V copy · ⌘D duplicate · ⌘G group · ⌘Z
+            undo
           </div>
         </Weave>
       </div>
@@ -163,7 +179,9 @@ export function WorkflowEditor() {
 const minimapColor = (n: FlowNode) =>
   n.type === "note"
     ? "--color-amber-400"
-    : `--color-${/bg-(\w+)-500/.exec(byKey[n.data.key]?.tint ?? "")?.[1] ?? "neutral"}-500`;
+    : n.type === "group"
+      ? "--muted"
+      : `--color-${/bg-(\w+)-500/.exec(byKey[n.data.key]?.tint ?? "")?.[1] ?? "neutral"}-500`;
 
 /** Floating actions for the selection: touch has no Delete key or reliable double-click. */
 function SelectionBar({ flow, onEdit }: { flow: Flow; onEdit: (id: string) => void }) {
@@ -173,6 +191,7 @@ function SelectionBar({ flow, onEdit }: { flow: Flow; onEdit: (id: string) => vo
   if (!total) return null;
   const only = nodes.length === 1 ? nodes[0] : undefined;
   const editable = only && flow.get().nodes[only]?.type === "step";
+  const group = only && flow.get().nodes[only]?.type === "group" ? only : undefined;
   return (
     <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border bg-card/90 p-1 pl-3 shadow-lg backdrop-blur-md animate-in fade-in-0 slide-in-from-bottom-2">
       <span className="mr-1 text-xs whitespace-nowrap text-muted-foreground tabular-nums">{total} selected</span>
@@ -181,12 +200,24 @@ function SelectionBar({ flow, onEdit }: { flow: Flow; onEdit: (id: string) => vo
           <Pencil /> Edit
         </Button>
       )}
+      {group ? (
+        <Button variant="ghost" size="sm" className="pointer-coarse:h-9" onClick={() => flow.ungroup(group)}>
+          <Ungroup /> <span className="hidden sm:inline">Ungroup</span>
+        </Button>
+      ) : (
+        nodes.length > 0 && (
+          <Button variant="ghost" size="sm" className="pointer-coarse:h-9" onClick={() => flow.group()}>
+            <Group /> <span className="hidden sm:inline">Group</span>
+          </Button>
+        )
+      )}
       {nodes.length > 0 && (
         <Button
           variant="ghost"
           size="sm"
           className="pointer-coarse:h-9"
           aria-label="Duplicate"
+
           onClick={() => flow.duplicate()}
         >
           <Copy /> <span className="hidden sm:inline">Duplicate</span>

@@ -68,6 +68,25 @@ flow.add([
 
 The fill is `--weave-note` (a warm tint of `--card`). To make your own nodes resizable, put `<NodeResizer />` in them and size the body from the `size` prop. Wrappers carry `data-node-id`, `data-type` and `data-selected` for CSS.
 
+## Groups
+
+`type: "group"` is built in: a titled frame around nodes whose `parent` is the group's id. Drag the title bar to move the group with everything in it; the frame's body lets clicks through to the canvas, so you can still pan and box-select inside it. The chevron collapses it to its title bar (`data.collapsed`): the contents hide, edges between them hide, and edges to the outside attach to the group's sides. Double-click the title to rename it, select it to resize it. Dropping a node onto an open group puts it in; dragging it out takes it out. Deleting or copying a group includes its contents.
+
+| API                        | Does                                                                                    |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| `flow.group(ids?, title?)` | frames the nodes (default: the selection) in a new group, returns its id; also ⌘/Ctrl+G |
+| `flow.ungroup(id)`         | removes the frame and keeps its contents; also ⇧⌘/Ctrl+G on selected groups             |
+| `flow.regroup(ids)`        | puts each node into the innermost open group under its centre (what a drop does)        |
+| `isHidden(state, id)`      | whether a node is inside a collapsed group                                              |
+| `shownAs(state, id)`       | the node an edge to `id` is drawn to: `id`, or its outermost collapsed group            |
+
+```tsx
+flow.add([
+  { id: "g", type: "group", position: { x: -40, y: 260 }, size: { w: 1060, h: 180 }, data: { title: "Nightly digest" } },
+  { id: "cron", type: "step", position: { x: 0, y: 320 }, data: { … }, parent: "g" },
+])
+```
+
 ## Undo and redo
 
 Every document change made through `flow` (`add`, `remove`, `connect`, `moveNodes`, `updateNode(Data)`, `updateEdge`, `setEdges`, and the clipboard, group and layout helpers below) is recorded; selection, viewport and `flow.set` are not. ⌘/Ctrl+Z undoes and ⇧⌘/Ctrl+Z redoes while the canvas has focus, and a node drag is a single step.

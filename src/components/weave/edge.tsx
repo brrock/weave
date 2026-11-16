@@ -6,6 +6,7 @@ import { ViewContext } from "./node";
 import { THEME } from "./theme";
 import {
   DEFAULT_SIZE,
+  shownAs,
   useFlow,
   useFlowState,
   type FlowEdge,
@@ -46,18 +47,21 @@ export const EdgeView = memo(function EdgeView({ edge }: { edge: FlowEdge }) {
   const flow = useFlow();
   const { edgeToolbar } = useContext(ViewContext);
   // Stable references only: the edge re-renders just when one of its endpoints moves or re-measures.
-  const sp = useFlowState((s) => s.nodes[edge.source]?.position);
-  const tp = useFlowState((s) => s.nodes[edge.target]?.position);
-  const sm = useFlowState((s) => s.handles[edge.source]?.[edge.sourceHandle]);
-  const tm = useFlowState((s) => s.handles[edge.target]?.[edge.targetHandle]);
-  const sz = useFlowState((s) => (sm ? undefined : s.sizes[edge.source]));
-  const tz = useFlowState((s) => (tm ? undefined : s.sizes[edge.target]));
+  // Endpoints inside a collapsed group attach to the group's side instead.
+  const src = useFlowState((s) => shownAs(s, edge.source));
+  const tgt = useFlowState((s) => shownAs(s, edge.target));
+  const sp = useFlowState((s) => s.nodes[src]?.position);
+  const tp = useFlowState((s) => s.nodes[tgt]?.position);
+  const sm = useFlowState((s) => (src === edge.source ? s.handles[src]?.[edge.sourceHandle] : undefined));
+  const tm = useFlowState((s) => (tgt === edge.target ? s.handles[tgt]?.[edge.targetHandle] : undefined));
+  const sz = useFlowState((s) => (sm ? undefined : s.sizes[src]));
+  const tz = useFlowState((s) => (tm ? undefined : s.sizes[tgt]));
   const [hover, setHover] = useState(false);
   const timer = useRef(0);
   const on = () => (clearTimeout(timer.current), setHover(true));
   const off = () => void (timer.current = window.setTimeout(() => setHover(false), 120));
 
-  if (!sp || !tp) return null;
+  if (!sp || !tp || src === tgt) return null; // both ends folded into one group
   const sb = sm ?? guess("source", sz);
   const tb = tm ?? guess("target", tz);
   const { d, mid, at } = bezier(

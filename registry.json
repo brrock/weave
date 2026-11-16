@@ -32,6 +32,11 @@
           "target": "components/weave/note.tsx"
         },
         {
+          "path": "src/components/weave/group.tsx",
+          "type": "registry:component",
+          "target": "components/weave/group.tsx"
+        },
+        {
           "path": "src/components/weave/edge.tsx",
           "type": "registry:component",
           "target": "components/weave/edge.tsx"

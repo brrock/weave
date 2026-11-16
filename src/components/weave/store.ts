@@ -15,6 +15,8 @@ export interface FlowNode<D = any> {
   selected?: boolean;
   /** Explicit size for resizable nodes (notes, groups, or yours via <NodeResizer>); otherwise measured. */
   size?: Size;
+  /** The group this node belongs to: it moves with the group and hides while the group is collapsed. */
+  parent?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,18 +94,16 @@ export const cancelDrag = () => detachDrag?.();
  */
 export function drag(move: (e: PointerEvent) => void, up?: (e: PointerEvent) => void, done?: () => void) {
   cancelDrag();
-  const detach = () => {
+  const detach = (e?: PointerEvent) => {
     removeEventListener("pointermove", move);
     removeEventListener("pointerup", end);
     removeEventListener("pointercancel", end);
     detachDrag = null;
+    if (e) up?.(e);
     done?.();
   };
-  const end = (e: PointerEvent) => {
-    detach();
-    up?.(e);
-  };
-  detachDrag = detach;
+  const end = (e: PointerEvent) => detach(e);
+  detachDrag = () => detach();
   addEventListener("pointermove", move);
   addEventListener("pointerup", end);
   addEventListener("pointercancel", end);
@@ -135,6 +135,18 @@ export function parseClip(text: string | undefined): Clip | null {
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+/** The node an edge to `id` attaches to: `id` itself, or its outermost collapsed group. */
+export function shownAs(s: FlowState, id: string) {
+  let shown = id;
+  // The depth cap guards against parent cycles in imported data.
+  for (let p = s.nodes[id]?.parent, depth = 0; p && depth < 32; p = s.nodes[p]?.parent, depth++)
+    if (s.nodes[p]?.data?.collapsed) shown = p;
+  return shown;
+}
+
+/** Inside a collapsed group, so not drawn. */
+export const isHidden = (s: FlowState, id: string) => shownAs(s, id) !== id;
 
 /** The undoable part of the state. */
 type Doc = Pick<FlowState, "nodes" | "nodeIds" | "edges">;
@@ -288,7 +300,7 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
         y1 = Math.max(a.y, b.y);
       const hit = state.nodeIds.filter((id) => {
         const n = state.nodes[id];
-        if (!n) return false;
+        if (!n || isHidden(state, id)) return false;
         const { x, y } = n.position;
         const s = state.sizes[id] ?? DEFAULT_SIZE;
         if (BACKDROP.has(n.type)) return x >= x0 && x + s.w <= x1 && y >= y0 && y + s.h <= y1;
@@ -299,8 +311,10 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
     },
 
     // ---- dragging ----
+    /** Start positions for dragging the selection (groups bring their contents). */
     dragOrigins(): Record<string, XY> {
-      return Object.fromEntries(selectedNodes().map((n) => [n.id, n.position]));
+      const ids = withDescendants(selectedNodes().map((n) => n.id));
+      return Object.fromEntries(ids.flatMap((id) => (state.nodes[id] ? [[id, state.nodes[id].position]] : [])));
     },
     moveNodes(origins: Record<string, XY>, dx: number, dy: number) {
       const g = flow.snap;
@@ -348,11 +362,12 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
       flow.setEdges([...state.edges, e]);
       return e;
     },
+    /** Removes nodes (with their group contents), edges, and every edge touching a removed node. */
     remove(nodeIds: string[], edgeIds: string[] = []) {
-      const dead = new Set(nodeIds),
+      const dead = new Set(withDescendants(nodeIds)),
         deadEdges = new Set(edgeIds);
       const nodes = { ...state.nodes };
-      for (const id of nodeIds) delete nodes[id];
+      for (const id of dead) delete nodes[id];
       const edges = state.edges.filter((e) => !deadEdges.has(e.id) && !dead.has(e.source) && !dead.has(e.target));
       commit({ nodes, nodeIds: state.nodeIds.filter((id) => !dead.has(id)), edges, connected: connectedSet(edges) });
     },
@@ -365,7 +380,8 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
 
     // ---- clipboard ----
     /** The given nodes (default: the selection) and the edges between them, ready for JSON. */
-    copy(ids = selectedNodes().map((n) => n.id)): Clip {
+    copy(selection = selectedNodes().map((n) => n.id)): Clip {
+      const ids = withDescendants(selection);
       const keep = new Set(ids);
       const strip = <T>(x: T): T => ({ ...x, selected: undefined });
 
@@ -395,6 +411,7 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
         id: ids.get(n.id)!,
         position: { x: Math.round((n.position.x + dx) / g) * g, y: Math.round((n.position.y + dy) / g) * g },
         selected: true,
+        parent: n.parent && ids.get(n.parent),
       }));
       const edges = clip.edges.flatMap((e) => {
         const s = ids.get(e.source),
@@ -411,6 +428,74 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
     duplicate() {
       const clip = flow.copy();
       return clip.nodes.length ? flow.paste(clip) : [];
+    },
+
+    // ---- groups ----
+    /** Frames the nodes (default: the selection) in a new group and returns its id. */
+    group(ids = selectedNodes().map((n) => n.id), title = "Group"): string | null {
+      const pick = new Set(ids);
+      // Only the outermost picked nodes join; nested ones stay in their own groups.
+      const members = ids.filter((id) => state.nodes[id] && !pick.has(state.nodes[id].parent ?? ""));
+      const first = state.nodes[members[0] ?? ""];
+      if (!first) return null;
+      const b = flow.bounds(withDescendants(members));
+      const g = flow.snap;
+      const [pad, head] = [2 * Math.max(g, 20), 40];
+      const x = Math.floor((b.x - pad) / g) * g;
+      const y = Math.floor((b.y - pad - head) / g) * g;
+      const size = { w: Math.ceil((b.x + b.w + pad - x) / g) * g, h: Math.ceil((b.y + b.h + pad - y) / g) * g };
+      const id = uid();
+      const nodes = { ...state.nodes };
+      for (const m of members) nodes[m] = { ...nodes[m]!, parent: id, selected: false };
+      nodes[id] = {
+        id,
+        type: "group",
+        position: { x, y },
+        size,
+        data: { title },
+        parent: first.parent,
+        selected: true,
+      };
+      // First in draw order, so the frame sits under notes it contains.
+      commit({ nodes, nodeIds: [id, ...state.nodeIds] });
+      return id;
+    },
+    /** Removes a group frame, keeping its contents (they move up to the group's own group, if any). */
+    ungroup(id: string) {
+      const g = state.nodes[id];
+      if (g?.type !== "group") return;
+      flow.batch(() => {
+        const nodes = { ...state.nodes };
+        for (const n of Object.values(nodes)) if (n.parent === id) nodes[n.id] = { ...n, parent: g.parent };
+        commit({ nodes });
+        flow.remove([id]);
+      });
+    },
+    /** After a drop: puts each node into the innermost open group under its centre (or none). */
+    regroup(ids: string[]) {
+      const groups = state.nodeIds.flatMap((id) => {
+        const n = state.nodes[id];
+        return n?.type === "group" && !n.data?.collapsed && !isHidden(state, id) ? [n] : [];
+      });
+      let nodes: FlowState["nodes"] | null = null;
+      for (const id of ids) {
+        const n = state.nodes[id];
+        if (!n || n.type === "group") continue;
+        const z = state.sizes[id] ?? DEFAULT_SIZE;
+        const c = { x: n.position.x + z.w / 2, y: n.position.y + z.h / 2 };
+        let best: FlowNode | undefined;
+        let area = Infinity;
+        for (const gr of groups) {
+          const s = gr.size ?? state.sizes[gr.id] ?? DEFAULT_SIZE;
+          const inside =
+            c.x > gr.position.x && c.x < gr.position.x + s.w && c.y > gr.position.y && c.y < gr.position.y + s.h;
+          if (inside && s.w * s.h < area) [best, area] = [gr, s.w * s.h];
+        }
+        if (best?.id === n.parent) continue;
+        nodes ??= { ...state.nodes };
+        nodes[id] = { ...n, parent: best?.id };
+      }
+      if (nodes) commit({ nodes });
     },
 
     // ---- history ----
@@ -498,7 +583,8 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
       const r = radius / state.viewport.zoom;
       for (const node in state.handles) {
         const n = state.nodes[node];
-        if (!n || node === from.node) continue;
+        if (!n || node === from.node || isHidden(state, node)) continue;
+
         const s = state.sizes[node] ?? DEFAULT_SIZE;
         const inside =
           p.x >= n.position.x && p.x <= n.position.x + s.w && p.y >= n.position.y && p.y <= n.position.y + s.h;
@@ -516,6 +602,21 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
   };
 
   const selectedNodes = () => state.nodeIds.flatMap((id) => (state.nodes[id]?.selected ? [state.nodes[id]] : []));
+  /** `ids` plus everything inside them (groups, nested groups), in draw order. */
+  const withDescendants = (ids: string[]) => {
+    const all = new Set(ids);
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const id of state.nodeIds) {
+        const p = state.nodes[id]?.parent;
+        if (p && all.has(p) && !all.has(id)) {
+          all.add(id);
+          grew = true;
+        }
+      }
+    }
+    return state.nodeIds.filter((id) => all.has(id));
+  };
 
   // Rounded to half a flow unit so re-measuring at another zoom yields identical values.
   const half = (v: number) => Math.round(v * 2) / 2;

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { ConnectionLine, EdgeView } from "./edge";
 import { NodeWrapper, ViewContext, type NodeTypes } from "./node";
 import { NoteNode } from "./note";
+import { GroupNode } from "./group";
 
 import { THEME } from "./theme";
 import {
@@ -19,7 +20,9 @@ import {
   FlowContext,
   cancelDrag,
   drag,
+  isHidden,
   parseClip,
+  shownAs,
   shallowArray,
   useFlow,
   useFlowState,
@@ -32,7 +35,8 @@ import {
 
 export interface WeaveProps extends Omit<HTMLAttributes<HTMLDivElement>, "onPointerDown"> {
   flow: Flow;
-  /** Your node components by `node.type`. `note` is built in (override it by name). */
+  /** Your node components by `node.type`. `note` and `group` are built in (override them by name). */
+
   nodeTypes: NodeTypes;
 
   /** Buttons shown on edge hover (or when selected, for touch); defaults to a delete button. */
@@ -46,7 +50,8 @@ export interface WeaveProps extends Omit<HTMLAttributes<HTMLDivElement>, "onPoin
  * Mouse: drag background or scroll to pan, pinch or ⌘/Ctrl+scroll to zoom, Shift-drag to box select.
  * Touch: one finger pans, two fingers pinch/pan, long-press then drag to box select.
  * Keys: Backspace/Delete removes the selection, ⌘A selects all, Esc clears, ⌘Z / ⇧⌘Z undo and redo,
- * ⌘C / ⌘X / ⌘V copy, cut and paste (at the pointer), ⌘D duplicates.
+ * ⌘C / ⌘X / ⌘V copy, cut and paste (at the pointer), ⌘D duplicates, ⌘G / ⇧⌘G group and ungroup.
+
 
  */
 export function Weave({
@@ -62,7 +67,10 @@ export function Weave({
 }: WeaveProps) {
   const ref = useRef<HTMLDivElement>(null);
   // Built-in types; yours win on a name clash.
-  const view = useMemo(() => ({ nodeTypes: { note: NoteNode, ...nodeTypes }, edgeToolbar }), [nodeTypes, edgeToolbar]);
+  const view = useMemo(
+    () => ({ nodeTypes: { note: NoteNode, group: GroupNode, ...nodeTypes }, edgeToolbar }),
+    [nodeTypes, edgeToolbar],
+  );
 
   useLayoutEffect(() => {
     flow.events.onConnectEnd = onConnectEnd;
@@ -153,6 +161,10 @@ export function Weave({
     else if (mod && key === "z" && e.shiftKey) flow.redo();
     else if (mod && key === "z") flow.undo();
     else if (mod && key === "d") flow.duplicate();
+    else if (mod && key === "g" && e.shiftKey) {
+      const { nodes } = flow.get();
+      flow.batch(() => Object.values(nodes).forEach((n) => n.selected && flow.ungroup(n.id)));
+    } else if (mod && key === "g") flow.group();
     else return;
     e.preventDefault();
   };
@@ -334,16 +346,16 @@ function viewRect(s: FlowState) {
 }
 
 function visibleNodeIds(s: FlowState) {
-  if (!s.size.w) return s.nodeIds;
-  const v = viewRect(s);
+  const v = s.size.w ? viewRect(s) : null;
   return s.nodeIds.filter((id) => {
     const n = s.nodes[id];
+    if (!n || isHidden(s, id)) return false;
     const z = s.sizes[id] ?? DEFAULT_SIZE;
     // Selected nodes stay mounted so dragging one off-screen keeps its state.
     return (
-      !!n &&
-      (n.selected ||
-        (n.position.x < v.x1 && n.position.x + z.w > v.x0 && n.position.y < v.y1 && n.position.y + z.h > v.y0))
+      !v ||
+      n.selected ||
+      (n.position.x < v.x1 && n.position.x + z.w > v.x0 && n.position.y < v.y1 && n.position.y + z.h > v.y0)
     );
   });
 }
@@ -352,11 +364,14 @@ function visibleEdges(s: FlowState) {
   if (!s.size.w) return s.edges;
   const v = viewRect(s);
   return s.edges.filter((e) => {
-    const a = s.nodes[e.source],
-      b = s.nodes[e.target];
+    // Edges into a collapsed group attach to the group.
+    const ia = shownAs(s, e.source),
+      ib = shownAs(s, e.target);
+    const a = s.nodes[ia],
+      b = s.nodes[ib];
     if (!a || !b) return false;
-    const za = s.sizes[e.source] ?? DEFAULT_SIZE,
-      zb = s.sizes[e.target] ?? DEFAULT_SIZE;
+    const za = s.sizes[ia] ?? DEFAULT_SIZE,
+      zb = s.sizes[ib] ?? DEFAULT_SIZE;
     // Bounding box of both endpoint nodes, padded for bezier overshoot.
     const pad = 120;
     const x0 = Math.min(a.position.x, b.position.x) - pad,

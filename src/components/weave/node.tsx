@@ -70,8 +70,12 @@ export const NodeWrapper = memo(function NodeWrapper({ id }: { id: string }) {
         const p = flow.toFlow(ev.clientX, ev.clientY);
         flow.moveNodes(origins, p.x - start.x, p.y - start.y);
       },
-      // Clicking (not dragging) one node of a multi-selection narrows the selection to it.
-      () => !moved && wasSelected && !e.shiftKey && flow.select([id]),
+      () => {
+        // Dropped nodes join (or leave) the group under them.
+        if (moved) flow.regroup(Object.keys(origins));
+        // Clicking (not dragging) one node of a multi-selection narrows the selection to it.
+        else if (wasSelected && !e.shiftKey) flow.select([id]);
+      },
       flow.begin(), // the whole drag is one undo step
     );
   };
@@ -88,6 +92,8 @@ export const NodeWrapper = memo(function NodeWrapper({ id }: { id: string }) {
         transform: `translate(${node.position.x}px,${node.position.y}px)`,
         // Notes and groups sit behind edges and other nodes.
         zIndex: BACKDROP.has(node.type) ? -1 : node.selected ? 1 : undefined,
+        // A group's frame lets clicks through to the canvas; its title bar and grip opt back in.
+        pointerEvents: node.type === "group" ? "none" : undefined,
       }}
       onPointerDown={onPointerDown}
     >
@@ -106,7 +112,8 @@ export function NodeResizer({ minWidth = 120, minHeight = 60 }: { minWidth?: num
     <div
       data-nodrag=""
       aria-hidden
-      className="absolute right-0 bottom-0 size-4 cursor-nwse-resize touch-none after:absolute after:right-1 after:bottom-1 after:size-2 after:rounded-br-[3px] after:border-r-2 after:border-b-2 after:border-current after:opacity-40 after:content-[''] pointer-coarse:size-8"
+      className="pointer-events-auto absolute right-0 bottom-0 size-4 cursor-nwse-resize
+ touch-none after:absolute after:right-1 after:bottom-1 after:size-2 after:rounded-br-[3px] after:border-r-2 after:border-b-2 after:border-current after:opacity-40 after:content-[''] pointer-coarse:size-8"
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         const s = flow.get().sizes[id] ?? DEFAULT_SIZE;

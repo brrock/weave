@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createFlow, edge, parseClip, type FlowNode } from "./store";
+import { createFlow, edge, isHidden, parseClip, shownAs, type FlowNode } from "./store";
 
 const n = (id: string, x = 0, y = 0): FlowNode => ({ id, type: "step", position: { x, y }, data: {} });
 
@@ -104,4 +104,49 @@ test("copy/paste remaps ids, keeps inner edges and is one undo step", () => {
   expect(parseClip("not json")).toBeNull();
   expect(parseClip('{"nodes":[{"id":1}]}')).toBeNull();
   expect(parseClip('{"nodes":[]}')).toBeNull();
+});
+
+test("groups frame nodes, move them together, collapse and cascade", () => {
+  const f = createFlow([n("a"), n("b", 400), n("c", 800)], [edge("a", "out", "b", "in"), edge("b", "out", "c", "in")]);
+  const g = f.group(["a", "b"], "Pair")!;
+  const frame = f.get().nodes[g]!;
+  expect(f.get().nodeIds[0]).toBe(g); // drawn first, under its contents
+  expect(frame).toMatchObject({ type: "group", data: { title: "Pair" }, selected: true });
+  expect(frame.position.x).toBeLessThan(0);
+  expect(frame.position.x + frame.size!.w).toBeGreaterThan(400 + 240);
+  expect(f.get().nodes.a?.parent).toBe(g);
+
+  // Dragging the frame drags its contents.
+  f.moveNodes(f.dragOrigins(), 100, 0);
+  expect([f.get().nodes.a?.position.x, f.get().nodes.b?.position.x, f.get().nodes.c?.position.x]).toEqual([
+    100, 500, 800,
+  ]);
+
+  // Collapsing hides the contents; edges attach to the group.
+  f.updateNodeData(g, { collapsed: true });
+  expect(isHidden(f.get(), "a")).toBe(true);
+  expect(shownAs(f.get(), "b")).toBe(g);
+  expect(shownAs(f.get(), "c")).toBe("c");
+  f.updateNodeData(g, { collapsed: false });
+
+  // Dropping c inside the frame joins it; dropping a far away leaves it.
+  f.set({ nodes: { ...f.get().nodes, c: { ...f.get().nodes.c!, position: { x: 200, y: 0 } } } });
+  f.regroup(["c"]);
+  expect(f.get().nodes.c?.parent).toBe(g);
+  f.moveNodes({ a: { x: 100, y: 0 } }, 0, 2000);
+  f.regroup(["a"]);
+  expect(f.get().nodes.a?.parent).toBeUndefined();
+
+  // Copy keeps membership; removing the group removes its contents.
+  f.select([g]);
+  const pasted = f.paste(f.copy());
+  expect(pasted).toHaveLength(3);
+  expect(pasted.slice(1).every((id) => f.get().nodes[id]?.parent === pasted[0])).toBe(true);
+  f.remove([g]);
+  expect(f.get().nodes.b).toBeUndefined();
+  expect(f.get().nodes.a).toBeDefined();
+  f.undo();
+  f.ungroup(g); // keeps the contents
+  expect(f.get().nodes[g]).toBeUndefined();
+  expect(f.get().nodes.b?.parent).toBeUndefined();
 });

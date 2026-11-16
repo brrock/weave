@@ -17,6 +17,8 @@ export const THEME = {
   edgeFlow: "var(--weave-edge-flow, var(--primary))",
   /** Sticky note fill (a warm tint of --card, so it follows light/dark). */
   note: "var(--weave-note, color-mix(in oklab, oklch(0.83 0.16 84) 22%, var(--card)))",
+  /** Group frame fill. */
+  group: "var(--weave-group, color-mix(in oklab, var(--muted) 70%, transparent))",
   /** Connection stroke width, resting and selected. */
 
   edgeWidth: "var(--weave-edge-width, 1.75px)",

@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { bezier, guess } from "./edge";
 import { THEME } from "./theme";
-import { DEFAULT_SIZE, drag, useFlow, useFlowState, type FlowNode } from "./store";
+import { DEFAULT_SIZE, drag, isHidden, shownAs, useFlow, useFlowState, type FlowNode } from "./store";
 
 const PANEL = "absolute z-30 rounded-xl border bg-card/85 shadow-sm backdrop-blur-md";
 const BOTTOM = "bottom-[max(1rem,env(safe-area-inset-bottom))]";
@@ -108,11 +108,12 @@ export function MiniMap({ className, width = 200, height = 140, nodeColor }: Min
       // Edges first, as faint curves between ports.
       ctx.beginPath();
       for (const e of s.edges) {
-        const a = s.nodes[e.source],
-          t = s.nodes[e.target];
-        if (!a || !t) continue;
-        const sb = s.handles[e.source]?.[e.sourceHandle] ?? guess("source", s.sizes[e.source]);
-        const tb = s.handles[e.target]?.[e.targetHandle] ?? guess("target", s.sizes[e.target]);
+        const [ia, it] = [shownAs(s, e.source), shownAs(s, e.target)];
+        const a = s.nodes[ia],
+          t = s.nodes[it];
+        if (!a || !t || ia === it) continue;
+        const sb = (ia === e.source && s.handles[ia]?.[e.sourceHandle]) || guess("source", s.sizes[ia]);
+        const tb = (it === e.target && s.handles[it]?.[e.targetHandle]) || guess("target", s.sizes[it]);
         const p = { x: a.position.x + sb.x, y: a.position.y + sb.y },
           q = { x: t.position.x + tb.x, y: t.position.y + tb.y };
         const { c1, c2 } = bezier(p, sb.side, q, tb.side);
@@ -129,7 +130,7 @@ export function MiniMap({ className, width = 200, height = 140, nodeColor }: Min
       const r = 3 / k;
       for (const id of s.nodeIds) {
         const n = s.nodes[id];
-        if (!n) continue;
+        if (!n || isHidden(s, id)) continue;
         const z = s.sizes[id] ?? DEFAULT_SIZE;
 
         const c = colorRef.current?.(n) ?? "--muted-foreground";
