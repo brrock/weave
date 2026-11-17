@@ -48,7 +48,7 @@ const flow = createFlow(
 </Weave>
 ```
 
-`flow` is the whole API: `add`, `remove`, `connect`, `updateNode(Data)`, `updateEdge`, `select`, `fitView`, `zoomAt`, `subscribe`/`get` for persistence. Use `useStore(flow, selector)` outside the canvas and `useFlowState(selector)` inside nodes.
+`flow` is the whole API: `add`, `remove`, `connect`, `updateNode(Data)`, `updateEdge`, `select`, `fitView`, `zoomAt`, `layout`, `group`/`ungroup`, `copy`/`paste`/`duplicate`, `undo`/`redo`, and `subscribe`/`get` for persistence. Use `useStore(flow, selector)` outside the canvas and `useFlowState(selector)` inside nodes.
 
 ## Sticky notes
 
@@ -177,17 +177,42 @@ Weave uses your shadcn theme as-is. Surfaces, borders, focus rings, selection an
 
 To restyle the canvas itself, set any of these variables on `:root`, on a theme class, or on one `<Weave className="…">`:
 
-| Variable                      | Styles                                           | Default                     |
-| ----------------------------- | ------------------------------------------------ | --------------------------- |
-| `--weave-dot`                 | background dot grid                              | `--muted-foreground` at 35% |
-| `--weave-edge`                | resting connections (canvas and minimap)         | `--muted-foreground` at 45% |
-| `--weave-edge-hover`          | hovered connection                               | `--foreground` at 70%       |
-| `--weave-edge-selected`       | selected connection, in-progress connection line | `--primary`                 |
-| `--weave-edge-flow`           | animated connections (`edge.animated`)           | `--primary`                 |
-| `--weave-edge-width`          | resting and hovered connection stroke width      | `1.75px`                    |
-| `--weave-edge-width-selected` | selected connection stroke width                 | `2.5px`                     |
-| `--weave-handle`              | port outlines                                    | `--muted-foreground` at 60% |
+| Variable                      | Styles                                               | Default                     |
+| ----------------------------- | ---------------------------------------------------- | --------------------------- |
+| `--weave-dot`                 | background dot grid                                  | `--muted-foreground` at 35% |
+| `--weave-edge`                | resting connections (canvas and minimap)             | `--muted-foreground` at 45% |
+| `--weave-edge-hover`          | hovered connection                                   | `--foreground` at 70%       |
+| `--weave-edge-selected`       | selected connection, in-progress connection line     | `--primary`                 |
+| `--weave-edge-flow`           | animated connections (`edge.animated`)               | `--primary`                 |
+| `--weave-edge-width`          | resting and hovered connection stroke width          | `1.75px`                    |
+| `--weave-edge-width-selected` | selected connection stroke width                     | `2.5px`                     |
+| `--weave-handle`              | port outlines                                        | `--muted-foreground` at 60% |
+| `--weave-handle-fill`         | port fill                                            | `--background`              |
+| `--weave-handle-active`       | hovered ports, and ports a connection drag can reach | `--primary`                 |
+| `--weave-handle-size`         | port diameter                                        | `12px`                      |
+| `--weave-note`                | sticky note fill                                     | `--card` tinted amber       |
+| `--weave-group`               | group frame fill                                     | `--muted` at 70%            |
 
 ```tsx
 <Weave className="[--weave-edge-flow:var(--color-emerald-500)]" … />
+```
+
+## Upgrading from v0.1
+
+Re-run `npx shadcn@latest add …/weave.json` so you get the new files (`note.tsx`, `group.tsx`) and CSS. Then check these changes:
+
+- **Handles are styled by CSS.** Port visuals moved out of `<Handle>`'s classes into the registry CSS (`@layer components`). Without that CSS, ports render unstyled. `data-handle-type` is now `data-type`.
+- **Edge DOM.** Each edge's visible path(s) now sit inside `<g data-edge-id …>`, so selectors like `path[pointer-events=stroke] + path` need updating to `[data-edge-id] path`.
+- **Flowing edges are beads.** `weave-flow` now draws round beads (`0.01 14`, 4px) over a faint track, instead of `7 4` dashes. If you'd overridden `weave-flow` yourself (with `!important` stroke widths), you can delete that override. Stroke widths now come from `--weave-edge-width` / `--weave-edge-width-selected`.
+- **History records mutations.** `add`, `remove`, `connect`, `moveNodes`, `updateNode(Data)`, `updateEdge` and `setEdges` are now undo steps. Wrap transient updates (run status, `animated`, live labels) in `flow.untracked(() => …)` to keep them out of history. `flow.set` stays unrecorded.
+- **Built-in `note` and `group` types.** Your own `nodeTypes.note` / `nodeTypes.group` still win. Nodes of those types now draw behind other nodes.
+- **`remove` includes group contents.** It also removes nodes whose `parent` is a removed node (only relevant once you use `parent`).
+
+## Development
+
+```bash
+bun install
+bun run check   # typecheck (strict), oxlint, oxfmt --check, unit tests
+bun dev         # demo at http://localhost:5173
+bun run e2e     # Playwright against the running dev server; set CHROME_PATH to use a local Chrome
 ```
