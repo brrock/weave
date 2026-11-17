@@ -136,6 +136,20 @@ export function parseClip(text: string | undefined): Clip | null {
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
+/** A group frame around a bounding box: padding all round plus room for the title bar, snapped outwards. */
+const FRAME = { pad: 40, head: 40 };
+
+function frameAround(b: { x: number; y: number; w: number; h: number }, g = 20) {
+  const { pad, head } = FRAME;
+
+  const x = Math.floor((b.x - pad) / g) * g;
+  const y = Math.floor((b.y - pad - head) / g) * g;
+  return {
+    position: { x, y },
+    size: { w: Math.ceil((b.x + b.w + pad - x) / g) * g, h: Math.ceil((b.y + b.h + pad - y) / g) * g },
+  };
+}
+
 /** The node an edge to `id` attaches to: `id` itself, or its outermost collapsed group. */
 export function shownAs(s: FlowState, id: string) {
   let shown = id;
@@ -176,6 +190,8 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
   let base: Doc | null = null;
   let dirty = false;
   let paused = 0;
+  let stopLayout = () => {};
+
   const doc = (): Doc => ({ nodes: state.nodes, nodeIds: state.nodeIds, edges: state.edges });
   const restore = (d: Doc) => flow.set({ ...d, connected: connectedSet(d.edges) });
   /** Applies a document change, recording it for undo. */
@@ -438,19 +454,14 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
       const members = ids.filter((id) => state.nodes[id] && !pick.has(state.nodes[id].parent ?? ""));
       const first = state.nodes[members[0] ?? ""];
       if (!first) return null;
-      const b = flow.bounds(withDescendants(members));
-      const g = flow.snap;
-      const [pad, head] = [2 * Math.max(g, 20), 40];
-      const x = Math.floor((b.x - pad) / g) * g;
-      const y = Math.floor((b.y - pad - head) / g) * g;
-      const size = { w: Math.ceil((b.x + b.w + pad - x) / g) * g, h: Math.ceil((b.y + b.h + pad - y) / g) * g };
+      const { position, size } = frameAround(flow.bounds(withDescendants(members)));
       const id = uid();
       const nodes = { ...state.nodes };
       for (const m of members) nodes[m] = { ...nodes[m]!, parent: id, selected: false };
       nodes[id] = {
         id,
         type: "group",
-        position: { x, y },
+        position,
         size,
         data: { title },
         parent: first.parent,
@@ -496,6 +507,144 @@ export function createFlow(nodes: FlowNode[] = [], edges: FlowEdge[] = []) {
         nodes[id] = { ...n, parent: best?.id };
       }
       if (nodes) commit({ nodes });
+    },
+
+    // ---- layout ----
+    /**
+     * Arranges nodes left to right in layers along their edges: each node sits right of everything feeding it,
+     * level with the ports it hangs off (so port order is kept top to bottom). Notes stay put and open groups
+     * refit around their contents. One undo step; resolves when the animation ends.
+     */
+    layout({ animate = true, gap = { x: 100, y: 40 } } = {}): Promise<void> {
+      stopLayout();
+      const ids = state.nodeIds.filter((id) => {
+        const n = state.nodes[id];
+        return !!n && !BACKDROP.has(n.type) && !isHidden(state, id);
+      });
+      if (!ids.length) return Promise.resolve();
+      const at = (id: string) => state.nodes[id]!.position;
+      const size = (id: string) => state.sizes[id] ?? state.nodes[id]?.size ?? DEFAULT_SIZE;
+      const port = (id: string, handle: string) => state.handles[id]?.[handle]?.y ?? size(id).h / 2;
+      const inLayout = new Set(ids);
+      const outs = new Map(ids.map((id) => [id, [] as FlowEdge[]]));
+      for (const e of state.edges)
+        if (inLayout.has(e.source) && inLayout.has(e.target) && e.source !== e.target) outs.get(e.source)!.push(e);
+
+      // Depth-first from the sources (then the leftmost nodes); an edge back into the current path closes a
+      // cycle and is ignored.
+      const fed = new Set([...outs.values()].flat().map((e) => e.target));
+      const start = [...ids].sort((a, b) => +fed.has(a) - +fed.has(b) || at(a).x - at(b).x || at(a).y - at(b).y);
+
+      const mark = new Map<string, "open" | "done">();
+      const post: string[] = [];
+      const ins = new Map(ids.map((id) => [id, [] as FlowEdge[]]));
+      const visit = (id: string) => {
+        mark.set(id, "open");
+        for (const e of outs.get(id)!) {
+          if (mark.get(e.target) === "open") continue;
+          ins.get(e.target)!.push(e);
+          if (!mark.has(e.target)) visit(e.target);
+        }
+        mark.set(id, "done");
+        post.push(id);
+      };
+      for (const id of start) if (!mark.has(id)) visit(id);
+
+      // Layer = longest path from a source (reverse post-order is topological).
+      const rank = new Map<string, number>();
+      for (const id of post.reverse()) rank.set(id, Math.max(0, ...ins.get(id)!.map((e) => rank.get(e.source)! + 1)));
+      const layers: string[][] = [];
+      for (const id of start) (layers[rank.get(id)!] ??= []).push(id);
+
+      const y0 = Math.min(...ids.map((id) => at(id).y));
+      const goal: Record<string, { position: XY; size?: Size }> = {};
+      let x = Math.min(...ids.map((id) => at(id).x));
+      for (const layer of layers) {
+        // Where each node wants to be: level with the ports feeding it, on average.
+        const want = new Map(
+          layer.map((id) => {
+            const ys = ins
+              .get(id)!
+              .map((e) => goal[e.source]!.position.y + port(e.source, e.sourceHandle) - port(id, e.targetHandle));
+            return [id, ys.length ? ys.reduce((a, b) => a + b) / ys.length : y0];
+          }),
+        );
+        layer.sort((a, b) => want.get(a)! - want.get(b)! || at(a).y - at(b).y);
+        let bottom = -Infinity;
+        let group: string | undefined;
+        for (const id of layer) {
+          // Leave room for a group frame's padding and title bar between nodes of different groups.
+          const parent = state.nodes[id]!.parent;
+          const y = Math.max(want.get(id)!, bottom + gap.y + (parent !== group ? 2 * FRAME.pad + FRAME.head : 0));
+          goal[id] = { position: { x, y } };
+          bottom = y + size(id).h;
+          group = parent;
+        }
+        x += Math.max(...layer.map((id) => size(id).w)) + gap.x;
+      }
+      // Keep the first source where it was, so the graph doesn't jump (or run into notes around it).
+      const anchor = start[0]!;
+      const [dx, dy] = [at(anchor).x - goal[anchor]!.position.x, at(anchor).y - goal[anchor]!.position.y];
+      const g = flow.snap;
+      for (const k of Object.values(goal))
+        k.position = { x: Math.round((k.position.x + dx) / g) * g, y: Math.round((k.position.y + dy) / g) * g };
+
+      // shortcut: each open group refits to its own laid-out contents, so two groups can end up overlapping;
+      // lay out group by group if that matters.
+      for (const id of state.nodeIds) {
+        const n = state.nodes[id];
+        if (n?.type !== "group" || n.data?.collapsed || isHidden(state, id)) continue;
+        const inside = withDescendants([id]).filter((c) => goal[c] && c !== id);
+        if (!inside.length) continue;
+        let [x1, y1, x2, y2] = [Infinity, Infinity, -Infinity, -Infinity];
+        for (const c of inside) {
+          const p = goal[c]!.position;
+          const s = size(c);
+          [x1, y1, x2, y2] = [Math.min(x1, p.x), Math.min(y1, p.y), Math.max(x2, p.x + s.w), Math.max(y2, p.y + s.h)];
+        }
+        goal[id] = frameAround({ x: x1, y: y1, w: x2 - x1, h: y2 - y1 });
+      }
+
+      const from = Object.fromEntries(Object.keys(goal).map((id) => [id, state.nodes[id]!]));
+      const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
+      const apply = (k: number) => {
+        const nodes = { ...state.nodes };
+        for (const [id, { position: p, size: s }] of Object.entries(goal)) {
+          const n = nodes[id];
+          const f = from[id]!;
+          if (!n) continue;
+          const position = { x: lerp(f.position.x, p.x, k), y: lerp(f.position.y, p.y, k) };
+          const fs = f.size ?? size(id);
+          nodes[id] = { ...n, position, ...(s && { size: { w: lerp(fs.w, s.w, k), h: lerp(fs.h, s.h, k) } }) };
+        }
+        commit({ nodes });
+      };
+      const end = flow.begin();
+      return new Promise((resolve) => {
+        let raf = 0;
+        const finish = () => {
+          stopLayout = () => {};
+          if (raf) cancelAnimationFrame(raf);
+
+          apply(1);
+          end();
+          resolve();
+        };
+        // shortcut: every frame re-renders every moving node, so big graphs jump straight to the result;
+        // animate them by moving only on-screen nodes if that's ever needed.
+        const big = Object.keys(goal).length > 250;
+        if (!animate || big || typeof requestAnimationFrame === "undefined") return finish();
+
+        stopLayout = finish; // a newer layout jumps this one to its end first
+        const t0 = performance.now();
+        const step = (t: number) => {
+          const k = Math.min(1, (t - t0) / 320);
+          if (k === 1) return finish();
+          apply(1 - (1 - k) ** 3);
+          raf = requestAnimationFrame(step);
+        };
+        raf = requestAnimationFrame(step);
+      });
     },
 
     // ---- history ----

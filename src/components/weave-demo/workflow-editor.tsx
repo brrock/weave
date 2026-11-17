@@ -12,6 +12,7 @@ import {
   Sun,
   Trash2,
   Undo2,
+  WandSparkles,
   Ungroup,
   Workflow,
 } from "lucide-react";
@@ -131,6 +132,14 @@ export function WorkflowEditor() {
             </Button>
             <Button variant="ghost" size="icon-sm" aria-label="Toggle theme" onClick={toggleTheme}>
               {dark ? <Sun /> : <Moon />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Tidy up"
+              onClick={() => flow.layout().then(() => flow.fitView())}
+            >
+              <WandSparkles /> <span className="hidden sm:inline">Tidy up</span>
             </Button>
             <Button variant="ghost" size="icon-sm" aria-label="Add note" onClick={() => addNote(flow)}>
               <StickyNote />

@@ -150,3 +150,47 @@ test("groups frame nodes, move them together, collapse and cascade", () => {
   expect(f.get().nodes[g]).toBeUndefined();
   expect(f.get().nodes.b?.parent).toBeUndefined();
 });
+
+test("layout: layers left to right, keeps port order, survives cycles, one undo step", async () => {
+  // A branch whose `true` port (top) leads to `t` and `false` (bottom) to `f`, placed the wrong way round.
+  const f = createFlow(
+    [
+      n("src", 300, 300),
+      n("in", 500, 900),
+      n("if", 0, 0),
+      n("f", 0, -400),
+      n("t", 900, 300),
+      n("end", 50, 50),
+      { ...n("note", 7, 7), type: "note" },
+    ],
+    [
+      edge("src", "out", "in", "in"),
+      edge("in", "out", "if", "in"),
+      edge("if", "true", "t", "in"),
+      edge("if", "false", "f", "in"),
+      edge("t", "out", "end", "in"),
+      edge("f", "out", "end", "in"),
+      edge("end", "out", "in", "in"),
+    ],
+  );
+  f.set({
+    handles: {
+      if: {
+        true: { x: 240, y: 20, side: "right", type: "source" },
+        false: { x: 240, y: 44, side: "right", type: "source" },
+      },
+    },
+  });
+  await f.layout({ animate: false });
+  const p = (id: string) => f.get().nodes[id]!.position;
+  expect(p("src").x).toBeLessThan(p("in").x);
+  expect(p("in").x).toBeLessThan(p("if").x);
+  expect(p("if").x).toBeLessThan(p("t").x);
+  expect(p("t").x).toBe(p("f").x);
+  expect(p("t").y).toBeLessThan(p("f").y); // true above false, like their ports
+  expect(p("end").x).toBeGreaterThan(p("t").x);
+  expect(p("src").y).toBe(p("if").y); // a chain stays level
+  expect(p("note")).toEqual({ x: 7, y: 7 }); // notes stay put
+  f.undo();
+  expect(p("in")).toEqual({ x: 500, y: 900 });
+});

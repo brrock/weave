@@ -87,6 +87,15 @@ flow.add([
 ])
 ```
 
+## Auto-layout
+
+`flow.layout()` arranges the graph left to right in layers along its edges, so imported or agent-built workflows come out tidy. Each node sits right of everything that feeds it and level with the ports it hangs off, so a branch's outputs keep their top-to-bottom order. Cycles are broken at the edge that closes them, and the first source node stays where it was so the graph doesn't jump. Notes stay put, and open groups refit around their contents. Nodes glide into place (graphs over 250 nodes jump straight there). The whole layout is one undo step, and the returned promise resolves when it's done.
+
+```tsx
+await flow.layout(); // { animate = true, gap = { x: 100, y: 40 } }
+flow.fitView();
+```
+
 ## Undo and redo
 
 Every document change made through `flow` (`add`, `remove`, `connect`, `moveNodes`, `updateNode(Data)`, `updateEdge`, `setEdges`, and the clipboard, group and layout helpers below) is recorded; selection, viewport and `flow.set` are not. ⌘/Ctrl+Z undoes and ⇧⌘/Ctrl+Z redoes while the canvas has focus, and a node drag is a single step.

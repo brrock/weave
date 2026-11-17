@@ -291,6 +291,53 @@ p = await open();
 }
 await p.close();
 
+// ---- auto-layout ----
+p = await open();
+{
+  const boxes = () =>
+    p.evaluate(() =>
+      Object.fromEntries(
+        [...document.querySelectorAll("[data-node-id]")].map((n) => {
+          const r = n.getBoundingClientRect();
+          return [n.dataset.nodeId, { x: r.x, y: r.y, r: r.right, b: r.bottom, type: n.dataset.type }];
+        }),
+      ),
+    );
+  // Flow-space position (Tidy up also fits the view afterwards, which moves everything on screen).
+  const flowX = (id) => p.locator(`[data-node-id="${id}"]`).evaluate((el) => new DOMMatrix(el.style.transform).e);
+  const x0 = await flowX("mail");
+  await p.getByLabel("Tidy up").click();
+  await p.waitForTimeout(100);
+  const x1 = await flowX("mail");
+  await p.waitForTimeout(800);
+  const x2 = await flowX("mail");
+  check("layout animates", x0 !== x1 && x1 !== x2, [x0, x1, x2]);
+  const after = await boxes();
+  const steps = Object.entries(after).filter(([, b]) => b.type === "step");
+  const overlapping = steps.flatMap(([a, A], i) =>
+    steps
+      .slice(i + 1)
+      .filter(([, B]) => A.x < B.r && A.r > B.x && A.y < B.b && A.b > B.y)
+      .map(([b]) => `${a}×${b}`),
+  );
+  check("layout leaves no overlaps", overlapping.length === 0, overlapping);
+  const flows = await p.evaluate(() => [...document.querySelectorAll("[data-edge-id]")].map((g) => g.dataset.edgeId));
+  const backwards = flows.filter((id) => {
+    const [, s, t] = /^(.+?):.+->(.+?):/.exec(id);
+    return id.includes(":tools") ? false : after[s].r > after[t].x;
+  });
+  check("every edge runs left to right", backwards.length === 0, backwards);
+  check("branches follow port order (true above false)", after.sales.y < after.mail.y);
+  const digest = after.digest,
+    inside = ["cron", "rows", "sum"].every(
+      (id) => after[id].x > digest.x && after[id].r < digest.r && after[id].y > digest.y && after[id].b < digest.b,
+    );
+  check("groups refit around their nodes", inside);
+  await p.getByLabel("Undo", { exact: true }).click(); // focus is on the toolbar, not the canvas
+  check("layout is one undo step", (await flowX("mail")) === x0);
+}
+await p.close();
+
 check("no page errors", errors.length === 0, errors);
 
 await b.close();
